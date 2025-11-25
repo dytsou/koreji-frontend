@@ -47,15 +47,14 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-## Get a fresh project
+## Quality checks
 
-When you're ready, run:
+Every pull request and push to `main` triggers the GitHub Actions workflow defined in `.github/workflows/ci.yml`. The pipeline installs dependencies with PNPM and runs:
 
-```bash
-pnpm run reset-project
-```
+- `pnpm lint` – Expo ESLint rules via `expo lint`.
+- `pnpm test` – currently runs TypeScript `--noEmit` checks through the `typecheck` script.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Run the same commands locally before opening a PR to catch issues early.
 
 ## Learn more
 
