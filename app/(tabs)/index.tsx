@@ -1,98 +1,228 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, Pressable, View, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { TaskMode, TaskPlace, TaskTool } from '@/constants/task-filters';
+import { FilterDropdown } from '@/components/ui/filter-dropdown';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [hours, setHours] = useState(0);
+  const [minutes, setMinutes] = useState(20);
+  const [selectedMode, setSelectedMode] = useState<TaskMode>(TaskMode.NO_SELECT);
+  const [selectedPlace, setSelectedPlace] = useState<TaskPlace>(TaskPlace.NO_SELECT);
+  const [selectedTool, setSelectedTool] = useState<TaskTool>(TaskTool.NO_SELECT);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const formatTime = (value: number): string => {
+    return value.toString().padStart(2, '0');
+  };
+
+  const incrementHours = () => {
+    setHours((prev) => prev + 1);
+  };
+
+  const decrementHours = () => {
+    setHours((prev) => Math.max(0, prev - 1));
+  };
+
+  const incrementMinutes = () => {
+    setMinutes((prev) => prev + 1);
+  };
+
+  const decrementMinutes = () => {
+    setMinutes((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleRecommend = () => {
+    // Placeholder for recommendation logic
+    console.log('Recommend task pressed', { hours, minutes });
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Section */}
+        <Text style={styles.headerText}>Now I have</Text>
+
+        {/* Time Input Widget */}
+        <View style={styles.timeContainer}>
+          {/* Hours Group */}
+          <View style={styles.timeGroup}>
+            <View style={styles.timeBox}>
+              <Text style={styles.timeValue}>{formatTime(hours)}</Text>
+            </View>
+            <Text style={styles.timeLabel}>hrs</Text>
+            <View style={styles.buttonRow}>
+              <Pressable
+                style={styles.circleButton}
+                onPress={decrementHours}
+                android_ripple={{ color: '#cccccc' }}
+              >
+                <Ionicons name="remove" size={20} color="#333333" />
+              </Pressable>
+              <Pressable
+                style={styles.circleButton}
+                onPress={incrementHours}
+                android_ripple={{ color: '#cccccc' }}
+              >
+                <Ionicons name="add" size={20} color="#333333" />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Minutes Group */}
+          <View style={styles.timeGroup}>
+            <View style={styles.timeBox}>
+              <Text style={styles.timeValue}>{formatTime(minutes)}</Text>
+            </View>
+            <Text style={styles.timeLabel}>mins</Text>
+            <View style={styles.buttonRow}>
+              <Pressable
+                style={styles.circleButton}
+                onPress={decrementMinutes}
+                android_ripple={{ color: '#cccccc' }}
+              >
+                <Ionicons name="remove" size={20} color="#333333" />
+              </Pressable>
+              <Pressable
+                style={styles.circleButton}
+                onPress={incrementMinutes}
+                android_ripple={{ color: '#cccccc' }}
+              >
+                <Ionicons name="add" size={20} color="#333333" />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+
+        {/* Filter Tags Section */}
+        <View style={styles.filtersContainer}>
+          <FilterDropdown
+            label="Place"
+            selectedValue={selectedPlace}
+            options={Object.values(TaskPlace)}
+            onSelect={setSelectedPlace}
+          />
+          <FilterDropdown
+            label="Mode"
+            selectedValue={selectedMode}
+            options={Object.values(TaskMode)}
+            onSelect={setSelectedMode}
+          />
+          <FilterDropdown
+            label="Tool"
+            selectedValue={selectedTool}
+            options={Object.values(TaskTool)}
+            onSelect={setSelectedTool}
+          />
+        </View>
+
+        {/* Main Action Button */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleRecommend}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="play" size={20} color="#2196f3" style={styles.buttonIcon} />
+          <Text style={styles.actionButtonText}>Recommend task for me</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 40,
+    alignItems: 'center',
+  },
+  headerText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  timeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 40,
+    gap: 20,
+  },
+  timeGroup: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  timeBox: {
+    width: 80,
+    height: 60,
+    borderWidth: 2,
+    borderColor: '#000000',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  timeValue: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  timeLabel: {
+    fontSize: 14,
+    color: '#333333',
+    fontWeight: '500',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  circleButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#333333',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  filtersContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 40,
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#2196f3',
+    borderRadius: 999,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    minWidth: 250,
     gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  buttonIcon: {
+    marginRight: 4,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2196f3',
   },
 });
