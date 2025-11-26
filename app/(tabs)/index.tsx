@@ -3,9 +3,16 @@ import { ScrollView, StyleSheet, TouchableOpacity, Pressable, View, Text, Platfo
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TaskMode, TaskPlace, TaskTool } from '@/constants/task-filters';
+import { HOME_SCREEN_STRINGS } from '@/constants/strings/home';
 import { FilterDropdown } from '@/components/ui/filter-dropdown';
 
 export default function HomeScreen() {
+  const {
+    headerTitle,
+    timeLabels,
+    filters,
+    actions,
+  } = HOME_SCREEN_STRINGS;
   const [hours, setHours] = useState(0);
   const [minutes, setMinutes] = useState(20);
 
@@ -119,7 +126,7 @@ export default function HomeScreen() {
 
   const handleRecommend = () => {
     // Placeholder for recommendation logic
-    console.log('Recommend task pressed', { hours, minutes });
+    console.log(actions.recommendLog, { hours, minutes });
   };
 
   return (
@@ -129,7 +136,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header Section */}
-        <Text style={styles.headerText}>Now I have</Text>
+        <Text style={styles.headerText}>{headerTitle}</Text>
 
         {/* Time Input Widget */}
         <View style={styles.timeContainer}>
@@ -170,7 +177,7 @@ export default function HomeScreen() {
             >
               <Ionicons name="chevron-down" size={20} color="#333333" />
             </Pressable>
-            <Text style={styles.timeLabel}>hrs</Text>
+            <Text style={styles.timeLabel}>{timeLabels.hours}</Text>
           </View>
 
           {/* Minutes Group */}
@@ -218,26 +225,26 @@ export default function HomeScreen() {
             >
               <Ionicons name="chevron-down" size={20} color="#333333" />
             </Pressable>
-            <Text style={styles.timeLabel}>mins</Text>
+            <Text style={styles.timeLabel}>{timeLabels.minutes}</Text>
           </View>
         </View>
 
         {/* Filter Tags Section */}
         <View style={styles.filtersContainer}>
           <FilterDropdown
-            label="Place"
+            label={filters.placeLabel}
             selectedValue={selectedPlace}
             options={Object.values(TaskPlace)}
             onSelect={(value) => setSelectedPlace(value as TaskPlace)}
           />
           <FilterDropdown
-            label="Mode"
+            label={filters.modeLabel}
             selectedValue={selectedMode}
             options={Object.values(TaskMode)}
             onSelect={(value) => setSelectedMode(value as TaskMode)}
           />
           <FilterDropdown
-            label="Tool"
+            label={filters.toolLabel}
             selectedValue={selectedTool}
             options={Object.values(TaskTool)}
             onSelect={(value) => setSelectedTool(value as TaskTool[])}
@@ -252,7 +259,7 @@ export default function HomeScreen() {
           activeOpacity={0.8}
         >
           <Ionicons name="play" size={20} color="#2196f3" style={styles.buttonIcon} />
-          <Text style={styles.actionButtonText}>Recommend task for me</Text>
+          <Text style={styles.actionButtonText}>{actions.recommendButton}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
