@@ -10,7 +10,7 @@ export default function HomeScreen() {
   const [minutes, setMinutes] = useState(20);
   const [selectedMode, setSelectedMode] = useState<TaskMode>(TaskMode.NO_SELECT);
   const [selectedPlace, setSelectedPlace] = useState<TaskPlace>(TaskPlace.NO_SELECT);
-  const [selectedTool, setSelectedTool] = useState<TaskTool>(TaskTool.NO_SELECT);
+  const [selectedTool, setSelectedTool] = useState<TaskTool[]>([TaskTool.NO_SELECT]);
 
   const formatTime = (value: number): string => {
     return value.toString().padStart(2, '0');
@@ -103,19 +103,20 @@ export default function HomeScreen() {
             label="Place"
             selectedValue={selectedPlace}
             options={Object.values(TaskPlace)}
-            onSelect={setSelectedPlace}
+            onSelect={(value) => setSelectedPlace(value as TaskPlace)}
           />
           <FilterDropdown
             label="Mode"
             selectedValue={selectedMode}
             options={Object.values(TaskMode)}
-            onSelect={setSelectedMode}
+            onSelect={(value) => setSelectedMode(value as TaskMode)}
           />
           <FilterDropdown
             label="Tool"
             selectedValue={selectedTool}
             options={Object.values(TaskTool)}
-            onSelect={setSelectedTool}
+            onSelect={(value) => setSelectedTool(value as TaskTool[])}
+            multiple
           />
         </View>
 

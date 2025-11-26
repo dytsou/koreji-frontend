@@ -12,9 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 
 type FilterDropdownProps<T extends string> = {
   label: string;
-  selectedValue: T;
+  selectedValue: T | T[];
   options: readonly T[];
-  onSelect: (value: T) => void;
+  onSelect: (value: T | T[]) => void;
+  multiple?: boolean;
 };
 
 export function FilterDropdown<T extends string>({
@@ -22,12 +23,52 @@ export function FilterDropdown<T extends string>({
   selectedValue,
   options,
   onSelect,
+  multiple = false,
 }: FilterDropdownProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
+  const selectedValues = multiple
+    ? (selectedValue as T[])
+    : ([selectedValue].filter(Boolean) as T[]);
 
   const handleSelect = (value: T) => {
-    onSelect(value);
-    setIsOpen(false);
+    if (multiple) {
+      const currentValues = selectedValues;
+      const isSelected = currentValues.includes(value);
+      if (isSelected) {
+        // Remove from selection
+        const newValues = currentValues.filter((v) => v !== value);
+        onSelect(newValues.length > 0 ? newValues : ([options[0]] as T[]));
+      } else {
+        // Add to selection (but exclude NO_SELECT if selecting something else)
+        const filtered = currentValues.filter((v) => v !== (options[0] as T));
+        onSelect([...filtered, value] as T[]);
+      }
+    } else {
+      onSelect(value);
+      setIsOpen(false);
+    }
+  };
+
+  const getDisplayText = (): string => {
+    if (multiple) {
+      const noSelectOption = options[0] as T;
+      const values = selectedValues.filter((v) => v !== noSelectOption);
+      // If only NO_SELECT is selected, show it
+      if (values.length === 0 && selectedValues.includes(noSelectOption)) {
+        return noSelectOption;
+      }
+      // If no selections, show NO_SELECT
+      if (values.length === 0) {
+        return noSelectOption;
+      }
+      // If single selection, show it
+      if (values.length === 1) {
+        return values[0];
+      }
+      // If multiple selections, show count
+      return `${values.length} selected`;
+    }
+    return selectedValue as string;
   };
 
   return (
@@ -36,7 +77,7 @@ export function FilterDropdown<T extends string>({
       <Pressable style={styles.filterValueBox} onPress={() => setIsOpen(true)}>
         <View style={styles.textContainer}>
           <Text style={styles.filterValue} numberOfLines={2} ellipsizeMode="tail">
-            {selectedValue}
+            {getDisplayText()}
           </Text>
         </View>
         <Ionicons name="chevron-down" size={16} color="#4CAF50" style={styles.chevron} />
@@ -59,28 +100,44 @@ export function FilterDropdown<T extends string>({
             <FlatList
               data={options}
               keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.optionItem,
-                    selectedValue === item && styles.optionItemSelected,
-                  ]}
-                  onPress={() => handleSelect(item)}
-                >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      selectedValue === item && styles.optionTextSelected,
-                    ]}
+              renderItem={({ item }) => {
+                const isSelected = multiple
+                  ? selectedValues.includes(item)
+                  : selectedValue === item;
+                return (
+                  <TouchableOpacity
+                    style={[styles.optionItem, isSelected && styles.optionItemSelected]}
+                    onPress={() => handleSelect(item)}
                   >
-                    {item}
-                  </Text>
-                  {selectedValue === item && (
-                    <Ionicons name="checkmark" size={20} color="#4CAF50" />
-                  )}
-                </TouchableOpacity>
-              )}
+                    <Text
+                      style={[
+                        styles.optionText,
+                        isSelected && styles.optionTextSelected,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons
+                        name={multiple ? 'checkbox' : 'checkmark'}
+                        size={20}
+                        color="#4CAF50"
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
             />
+            {multiple && (
+              <View style={styles.modalFooter}>
+                <Pressable
+                  style={styles.doneButton}
+                  onPress={() => setIsOpen(false)}
+                >
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         </Pressable>
       </Modal>
@@ -174,6 +231,23 @@ const styles = StyleSheet.create({
   },
   optionTextSelected: {
     color: '#4CAF50',
+    fontWeight: '600',
+  },
+  modalFooter: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  doneButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  doneButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
   },
 });
