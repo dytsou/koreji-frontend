@@ -16,6 +16,7 @@ concurrency:
 
 env:
   CI: true
+  PLAYWRIGHT_BASE_URL: http://127.0.0.1:8081
 
 jobs:
   quality-checks:
@@ -41,5 +42,26 @@ jobs:
       - name: Run lint
         run: pnpm lint
 
-      - name: Run type checks
+      - name: Start Expo web server
+        run: |
+          pnpm exec expo start --web --non-interactive --port 8081 >/tmp/expo-web.log 2>&1 &
+          echo $! > expo_web.pid
+
+      - name: Wait for Expo web server
+        run: |
+          timeout 90 bash -c 'until curl -sf http://127.0.0.1:8081 >/dev/null; do sleep 3; done'
+
+      - name: Run type checks + Playwright suite
         run: pnpm test
+
+      - name: Stop Expo web server (always)
+        if: always()
+        run: |
+          if [ -f expo_web.pid ]; then
+            kill "$(cat expo_web.pid)" || true
+            rm -f expo_web.pid
+          fi
+          if [ -f /tmp/expo-web.log ]; then
+            echo "---- Expo web server log ----"
+            tail -n 200 /tmp/expo-web.log || true
+          fi
