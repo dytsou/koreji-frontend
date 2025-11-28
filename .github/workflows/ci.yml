@@ -36,12 +36,6 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps
-
       - name: Detect E2E-impacting changes
         id: e2e-changes
         uses: dorny/paths-filter@v3
@@ -51,16 +45,24 @@ jobs:
             e2e:
               - 'app/**/*.ts'
               - 'app/**/*.tsx'
-              - 'tests/e2e/**'
+              - 'tests/e2e/**/*.ts'
+              - 'tests/e2e/**/*.tsx'
               - 'playwright.config.ts'
               - 'scripts/**'
               - '.github/workflows/ci.yml'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Run lint
         run: pnpm lint
 
       - name: Run type checks
         run: pnpm typecheck
+
+      - name: Install Playwright browsers
+        if: ${{ steps.e2e-changes.outputs.e2e == 'true' }}
+        run: pnpm exec playwright install --with-deps
 
       - name: Start Expo web server
         if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && steps.e2e-changes.outputs.e2e == 'true' }}
