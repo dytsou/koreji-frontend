@@ -13,9 +13,9 @@ export enum TaskMode {
 export enum TaskPlace {
   NO_SELECT = 'No select',
   HOME = 'Home',
-  SCHOOL = 'School',
+  CLASSROOM = 'Classroom',
   LIBRARY = 'Library',
-  COFFEE_SHOP = 'Coffee shop',
+  CAFE = 'Cafe',
 }
 
 export enum TaskTool {
