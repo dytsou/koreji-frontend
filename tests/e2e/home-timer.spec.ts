@@ -50,4 +50,64 @@ test.describe('Home screen timer', () => {
       () => consoleLogs.some((log) => log.includes(actions.recommendLog)),
     ).toBeTruthy();
   });
+
+  test('validates "Other" place input with character limit and warning', async ({ page }) => {
+    const { filters } = HOME_SCREEN_STRINGS;
+    const MAX_INPUT_LENGTH = 30;
+    
+    // Find and click the Place filter dropdown
+    const placeDropdown = page.getByTestId('filter-dropdown-place');
+    await expect(placeDropdown).toBeVisible();
+    await placeDropdown.click();
+    
+    // Wait for modal to appear
+    const modalTitle = page.getByText('Select Place');
+    await expect(modalTitle).toBeVisible();
+    
+    // Select "Other" option
+    const otherOption = page.getByText('Other');
+    await otherOption.click();
+    
+    // Verify input field appears
+    const inputField = page.getByTestId('filter-other-input');
+    await expect(inputField).toBeVisible();
+    
+    // Test typing within limit
+    const validText = 'My Custom Place';
+    await inputField.fill(validText);
+    await expect(inputField).toHaveValue(validText);
+    
+    // Verify no warning appears for valid input
+    const warningText = page.getByTestId('input-warning-text');
+    await expect(warningText).not.toBeVisible();
+    
+    // Test typing up to the limit
+    const textAtLimit = 'A'.repeat(MAX_INPUT_LENGTH);
+    await inputField.fill(textAtLimit);
+    await expect(inputField).toHaveValue(textAtLimit);
+    
+    // Verify warning message appears when at limit
+    await expect(warningText).toBeVisible();
+    await expect(warningText).toHaveText('Maximum length reached');
+    
+    // Test that input cannot exceed limit
+    const textOverLimit = 'A'.repeat(MAX_INPUT_LENGTH + 10);
+    await inputField.fill(textOverLimit);
+    // Input should be truncated to max length
+    await expect(inputField).toHaveValue(textAtLimit);
+    await expect(warningText).toBeVisible();
+    
+    // Verify Done button is enabled when input is valid
+    const doneButton = page.getByTestId('filter-modal-done-button');
+    await expect(doneButton).toBeEnabled();
+    
+    // Close modal by clicking Done
+    await doneButton.click();
+    
+    // Verify modal is closed
+    await expect(modalTitle).not.toBeVisible();
+    
+    // Verify the custom value is displayed in the dropdown
+    await expect(placeDropdown).toContainText(textAtLimit);
+  });
 });
