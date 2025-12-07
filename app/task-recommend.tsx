@@ -67,8 +67,15 @@ export default function TaskRecommendScreen() {
   const cardWidth = (availableWidth - (gapSize * (columns - 1))) / columns;
 
   const handleStartTask = () => {
-    // Handle start task action
-    console.log('Start task pressed');
+    // Get the recommended task (first task)
+    const recommendedTask = DUMMY_TASKS[0];
+    console.log('Start task pressed - Selected task info:', {
+      id: recommendedTask.id,
+      title: recommendedTask.title,
+      duration: recommendedTask.duration,
+      source: recommendedTask.source,
+      status: recommendedTask.status,
+    });
   };
 
   return (
