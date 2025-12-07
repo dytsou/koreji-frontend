@@ -103,7 +103,11 @@ export function FilterDropdown<T extends string>({
   return (
     <View style={styles.filterItem}>
       <Text style={styles.filterLabel}>{label}</Text>
-      <Pressable style={styles.filterValueBox} onPress={() => setIsOpen(true)}>
+      <Pressable 
+        style={styles.filterValueBox} 
+        onPress={() => setIsOpen(true)}
+        testID={`filter-dropdown-${label.toLowerCase()}`}
+      >
         <View style={styles.textContainer}>
           <Text style={styles.filterValue} numberOfLines={2} ellipsizeMode="tail">
             {getDisplayText()}
@@ -177,10 +181,11 @@ export function FilterDropdown<T extends string>({
                           onChangeText={handleOtherValueChange}
                           maxLength={maxInputLength}
                           autoFocus={false}
+                          testID="filter-other-input"
                         />
                         {isAtLimit && (
                           <View style={styles.inputInfoContainer}>
-                            <Text style={styles.inputWarningText}>
+                            <Text style={styles.inputWarningText} testID="input-warning-text">
                               Maximum length reached
                             </Text>
                           </View>
@@ -200,6 +205,7 @@ export function FilterDropdown<T extends string>({
                   ]}
                   onPress={() => setIsOpen(false)}
                   disabled={isOtherSelected && !otherOptionValue?.trim()}
+                  testID="filter-modal-done-button"
                 >
                   <Text
                     style={[
