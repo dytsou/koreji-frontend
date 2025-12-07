@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TaskStatus, TASK_STATUS_COLORS } from '@/constants/task-status';
 
@@ -15,6 +15,8 @@ interface TaskCardProps {
   width?: number;
   isLastInRow?: boolean;
   isRecommended?: boolean;
+  isSelected?: boolean;
+  onPress?: () => void;
 }
 
 // Helper function to get status colors
@@ -31,15 +33,18 @@ const getStatusColors = (status: TaskStatus) => {
   }
 };
 
-export function TaskCard({ task, width, isLastInRow, isRecommended }: TaskCardProps) {
+export function TaskCard({ task, width, isLastInRow, isRecommended, isSelected, onPress }: TaskCardProps) {
   const statusColors = getStatusColors(task.status);
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
       style={[
         styles.taskCard,
         styles.taskCardMasonry,
         isRecommended && styles.taskCardRecommended,
+        isSelected && styles.taskCardSelected,
         width && width > 0 ? { width } : undefined,
         isLastInRow && styles.taskCardLastInRow,
       ]}
@@ -68,7 +73,7 @@ export function TaskCard({ task, width, isLastInRow, isRecommended }: TaskCardPr
           </Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -81,6 +86,11 @@ const styles = StyleSheet.create({
   taskCardRecommended: {
     borderWidth: 2,
     borderColor: '#FF9000',
+  },
+  taskCardSelected: {
+    borderWidth: 2,
+    borderColor: '#2196f3',
+    backgroundColor: '#F0F7FF',
   },
   taskCardMasonry: {
     marginBottom: 16,

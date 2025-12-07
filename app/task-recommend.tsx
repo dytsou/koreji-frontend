@@ -44,6 +44,7 @@ const BREAKPOINT_TABLET = 768;
 export default function TaskRecommendScreen() {
   const totalMinutes = DUMMY_TASKS.reduce((sum, task) => sum + task.duration, 0);
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(DUMMY_TASKS[0]?.id || null);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -67,15 +68,22 @@ export default function TaskRecommendScreen() {
   const cardWidth = (availableWidth - (gapSize * (columns - 1))) / columns;
 
   const handleStartTask = () => {
-    // Get the recommended task (first task)
-    const recommendedTask = DUMMY_TASKS[0];
-    console.log('Start task pressed - Selected task info:', {
-      id: recommendedTask.id,
-      title: recommendedTask.title,
-      duration: recommendedTask.duration,
-      source: recommendedTask.source,
-      status: recommendedTask.status,
-    });
+    if (!selectedTaskId) return;
+    
+    const selectedTask = DUMMY_TASKS.find((task) => task.id === selectedTaskId);
+    if (selectedTask) {
+      console.log('Start task pressed - Selected task info:', {
+        id: selectedTask.id,
+        title: selectedTask.title,
+        duration: selectedTask.duration,
+        source: selectedTask.source,
+        status: selectedTask.status,
+      });
+    }
+  };
+
+  const handleTaskSelect = (taskId: string) => {
+    setSelectedTaskId(taskId);
   };
 
   return (
@@ -87,7 +95,13 @@ export default function TaskRecommendScreen() {
         <View style={styles.contentWrapper}>
           <TaskRecommendHeader />
           <TaskRecommendDescription totalMinutes={totalMinutes} />
-          <TaskList tasks={DUMMY_TASKS} columns={columns} cardWidth={cardWidth} />
+          <TaskList 
+            tasks={DUMMY_TASKS} 
+            columns={columns} 
+            cardWidth={cardWidth}
+            selectedTaskId={selectedTaskId}
+            onTaskSelect={handleTaskSelect}
+          />
         </View>
       </ScrollView>
       <StartTaskButton onPress={handleStartTask} />

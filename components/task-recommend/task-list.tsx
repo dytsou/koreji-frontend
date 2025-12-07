@@ -5,9 +5,11 @@ interface TaskListProps {
   tasks: Task[];
   columns: number;
   cardWidth: number;
+  selectedTaskId: string | null;
+  onTaskSelect: (taskId: string) => void;
 }
 
-export function TaskList({ tasks, columns, cardWidth }: TaskListProps) {
+export function TaskList({ tasks, columns, cardWidth, selectedTaskId, onTaskSelect }: TaskListProps) {
   return (
     <View style={[styles.taskListContainer, styles.taskListContainerMasonry]}>
       {tasks.map((task, index) => {
@@ -15,6 +17,7 @@ export function TaskList({ tasks, columns, cardWidth }: TaskListProps) {
         const isLastInRow = (index + 1) % columns === 0;
         // First task (index 0) is the recommended one
         const isRecommended = index === 0;
+        const isSelected = task.id === selectedTaskId;
         return (
           <TaskCard
             key={task.id}
@@ -22,6 +25,8 @@ export function TaskList({ tasks, columns, cardWidth }: TaskListProps) {
             width={cardWidth}
             isLastInRow={isLastInRow}
             isRecommended={isRecommended}
+            isSelected={isSelected}
+            onPress={() => onTaskSelect(task.id)}
           />
         );
       })}
