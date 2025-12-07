@@ -4,6 +4,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   FlatList,
@@ -16,7 +17,12 @@ type FilterDropdownProps<T extends string> = {
   options: readonly T[];
   onSelect: (value: T | T[]) => void;
   multiple?: boolean;
+  otherOptionValue?: string;
+  onOtherValueChange?: (value: string) => void;
+  maxInputLength?: number;
 };
+
+const DEFAULT_MAX_INPUT_LENGTH = 30;
 
 export function FilterDropdown<T extends string>({
   label,
@@ -24,11 +30,27 @@ export function FilterDropdown<T extends string>({
   options,
   onSelect,
   multiple = false,
+  otherOptionValue = '',
+  onOtherValueChange,
+  maxInputLength = DEFAULT_MAX_INPUT_LENGTH,
 }: FilterDropdownProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const selectedValues = multiple
     ? (selectedValue as T[])
     : ([selectedValue].filter(Boolean) as T[]);
+  
+  const isOtherSelected = !multiple && selectedValue === 'Other';
+
+  const handleOtherValueChange = (text: string) => {
+    if (onOtherValueChange) {
+      // Limit input to maxInputLength characters
+      const limitedText = text.slice(0, maxInputLength);
+      onOtherValueChange(limitedText);
+    }
+  };
+
+  const currentLength = otherOptionValue?.length || 0;
+  const isAtLimit = currentLength >= maxInputLength;
 
   const handleSelect = (value: T) => {
     if (multiple) {
@@ -45,7 +67,10 @@ export function FilterDropdown<T extends string>({
       }
     } else {
       onSelect(value);
-      setIsOpen(false);
+      // Keep modal open if "Other" is selected to allow text input
+      if (value !== 'Other') {
+        setIsOpen(false);
+      }
     }
   };
 
@@ -68,13 +93,21 @@ export function FilterDropdown<T extends string>({
       // If multiple selections, show count
       return `${values.length} selected`;
     }
+    // If "Other" is selected and has a custom value, show the custom value
+    if (isOtherSelected && otherOptionValue.trim()) {
+      return otherOptionValue;
+    }
     return selectedValue as string;
   };
 
   return (
     <View style={styles.filterItem}>
       <Text style={styles.filterLabel}>{label}</Text>
-      <Pressable style={styles.filterValueBox} onPress={() => setIsOpen(true)}>
+      <Pressable 
+        style={styles.filterValueBox} 
+        onPress={() => setIsOpen(true)}
+        testID={`filter-dropdown-${label.toLowerCase()}`}
+      >
         <View style={styles.textContainer}>
           <Text style={styles.filterValue} numberOfLines={2} ellipsizeMode="tail">
             {getDisplayText()}
@@ -89,8 +122,16 @@ export function FilterDropdown<T extends string>({
         animationType="fade"
         onRequestClose={() => setIsOpen(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setIsOpen(false)}>
-          <View style={styles.modalContent}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => {
+            // Prevent closing when "Other" is selected and no input provided
+            if (!isOtherSelected || otherOptionValue?.trim()) {
+              setIsOpen(false);
+            }
+          }}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select {label}</Text>
               <Pressable onPress={() => setIsOpen(false)}>
@@ -104,41 +145,80 @@ export function FilterDropdown<T extends string>({
                 const isSelected = multiple
                   ? selectedValues.includes(item)
                   : selectedValue === item;
+                const isOther = item === 'Other';
                 return (
-                  <TouchableOpacity
-                    style={[styles.optionItem, isSelected && styles.optionItemSelected]}
-                    onPress={() => handleSelect(item)}
-                  >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        isSelected && styles.optionTextSelected,
-                      ]}
+                  <View>
+                    <TouchableOpacity
+                      style={[styles.optionItem, isSelected && styles.optionItemSelected]}
+                      onPress={() => handleSelect(item)}
                     >
-                      {item}
-                    </Text>
-                    {isSelected && (
-                      <Ionicons
-                        name={multiple ? 'checkbox' : 'checkmark'}
-                        size={20}
-                        color="#4CAF50"
-                      />
+                      <Text
+                        style={[
+                          styles.optionText,
+                          isSelected && styles.optionTextSelected,
+                        ]}
+                      >
+                        {item}
+                      </Text>
+                      {isSelected && (
+                        <Ionicons
+                          name={multiple ? 'checkbox' : 'checkmark'}
+                          size={20}
+                          color="#4CAF50"
+                        />
+                      )}
+                    </TouchableOpacity>
+                    {isOther && isSelected && !multiple && onOtherValueChange && (
+                      <View style={styles.otherInputContainer}>
+                        <TextInput
+                          style={[
+                            styles.otherInput,
+                            isAtLimit && styles.otherInputWarning,
+                          ]}
+                          placeholder="Enter place..."
+                          placeholderTextColor="#999999"
+                          value={otherOptionValue}
+                          onChangeText={handleOtherValueChange}
+                          maxLength={maxInputLength}
+                          autoFocus={false}
+                          testID="filter-other-input"
+                        />
+                        {isAtLimit && (
+                          <View style={styles.inputInfoContainer}>
+                            <Text style={styles.inputWarningText} testID="input-warning-text">
+                              Maximum length reached
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     )}
-                  </TouchableOpacity>
+                  </View>
                 );
               }}
             />
-            {multiple && (
+            {(multiple || isOtherSelected) && (
               <View style={styles.modalFooter}>
                 <Pressable
-                  style={styles.doneButton}
+                  style={[
+                    styles.doneButton,
+                    isOtherSelected && !otherOptionValue?.trim() && styles.doneButtonDisabled,
+                  ]}
                   onPress={() => setIsOpen(false)}
+                  disabled={isOtherSelected && !otherOptionValue?.trim()}
+                  testID="filter-modal-done-button"
                 >
-                  <Text style={styles.doneButtonText}>Done</Text>
+                  <Text
+                    style={[
+                      styles.doneButtonText,
+                      isOtherSelected && !otherOptionValue?.trim() && styles.doneButtonTextDisabled,
+                    ]}
+                  >
+                    Done
+                  </Text>
                 </Pressable>
               </View>
             )}
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </View>
@@ -249,6 +329,41 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  doneButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+    opacity: 0.6,
+  },
+  doneButtonTextDisabled: {
+    color: '#999999',
+  },
+  otherInputContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    backgroundColor: '#FAFAFA',
+  },
+  otherInput: {
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#333333',
+    backgroundColor: '#FFFFFF',
+  },
+  otherInputWarning: {
+    borderColor: '#FF9800',
+  },
+  inputInfoContainer: {
+    marginTop: 8,
+  },
+  inputWarningText: {
+    fontSize: 12,
+    color: '#F44336',
+    fontWeight: '500',
   },
 });
 

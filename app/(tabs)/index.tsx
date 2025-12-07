@@ -80,6 +80,7 @@ export default function HomeScreen() {
   const [selectedMode, setSelectedMode] = useState<TaskMode>(TaskMode.NO_SELECT);
   const [selectedPlace, setSelectedPlace] = useState<TaskPlace>(TaskPlace.NO_SELECT);
   const [selectedTool, setSelectedTool] = useState<TaskTool[]>([TaskTool.NO_SELECT]);
+  const [customPlace, setCustomPlace] = useState<string>('');
 
   const formatTime = (value: number): string => {
     return value.toString().padStart(2, '0');
@@ -126,9 +127,23 @@ export default function HomeScreen() {
 
   const handleRecommend = () => {
     // Placeholder for recommendation logic
+    const MAX_PLACE_LENGTH = 30;
+    let placeValue: string | TaskPlace = selectedPlace;
+    
+    if (selectedPlace === TaskPlace.OTHER && customPlace.trim()) {
+      // Validate and limit the custom place value before using it
+      const trimmedPlace = customPlace.trim();
+      if (trimmedPlace.length > MAX_PLACE_LENGTH) {
+        // Prevent API call with invalid input - truncate to max length
+        placeValue = trimmedPlace.slice(0, MAX_PLACE_LENGTH);
+      } else {
+        placeValue = trimmedPlace;
+      }
+    }
+    
     console.log(actions.recommendLog, {
       time: `${hours * 60 + minutes}`, // total minutes
-      place: selectedPlace,
+      place: placeValue,
       mode: selectedMode,
       tools: selectedTool.join(', '),
     });
@@ -251,6 +266,8 @@ export default function HomeScreen() {
             selectedValue={selectedPlace}
             options={Object.values(TaskPlace)}
             onSelect={(value) => setSelectedPlace(value as TaskPlace)}
+            otherOptionValue={customPlace}
+            onOtherValueChange={setCustomPlace}
           />
           <FilterDropdown
             label={filters.modeLabel}

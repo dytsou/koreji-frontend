@@ -16,6 +16,7 @@ export enum TaskPlace {
   CLASSROOM = 'Classroom',
   LIBRARY = 'Library',
   CAFE = 'Cafe',
+  OTHER = 'Other',
 }
 
 export enum TaskTool {
