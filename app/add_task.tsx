@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import {
-    StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Alert, KeyboardAvoidingView, Platform
+    StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { TagDisplayRow, type TaskTags } from '@/components/ui/tag-display-row';
+import { TagSection } from '@/components/ui/tag-section';
 
 // --- 常數定義 ---
 const CATEGORIES = ['School', 'Home', 'Work', 'Personal'];
@@ -20,12 +22,7 @@ interface LocalSubTask {
     title: string;
     description: string; // 新增描述欄位
     estimatedTime: string;
-    tags: {
-        priority?: string;
-        attention?: string;
-        tools: string[];
-        place?: string;
-    };
+    tags: TaskTags;
 }
 
 export default function AddTaskScreen() {
@@ -36,14 +33,14 @@ export default function AddTaskScreen() {
     const [mainDesc, setMainDesc] = useState('');
     const [category, setCategory] = useState(CATEGORIES[0]);
     const [mainTime, setMainTime] = useState('');
-    const [mainTags, setMainTags] = useState<LocalSubTask['tags']>({ tools: [] });
+    const [mainTags, setMainTags] = useState<TaskTags>({ tools: [] });
 
     // --- 子任務列表 ---
     const [subtasks, setSubtasks] = useState<LocalSubTask[]>([]);
 
     // --- Tag Modal 狀態 ---
     const [editingTarget, setEditingTarget] = useState<'main' | string | null>(null);
-    const [tempTags, setTempTags] = useState<LocalSubTask['tags']>({ tools: [] });
+    const [tempTags, setTempTags] = useState<TaskTags>({ tools: [] });
     const [customPlace, setCustomPlace] = useState('');
 
     // --- 時間計算邏輯 ---
@@ -146,22 +143,6 @@ export default function AddTaskScreen() {
         router.back();
     };
 
-    // --- Tag 顯示元件 ---
-    const TagDisplayRow = ({ tags, onEdit }: { tags: LocalSubTask['tags'], onEdit: () => void }) => {
-        return (
-            <View style={styles.tagDisplayContainer}>
-                <View style={styles.tagRow}>
-                    {tags.priority && <View style={[styles.miniTag, { backgroundColor: '#FFF3E0' }]}><Text style={[styles.miniTagText, { color: '#E65100' }]}>{tags.priority}</Text></View>}
-                    {tags.attention && <View style={[styles.miniTag, { backgroundColor: '#F3E5F5' }]}><Text style={[styles.miniTagText, { color: '#7B1FA2' }]}>{tags.attention}</Text></View>}
-                    {tags.place && <View style={[styles.miniTag, { backgroundColor: '#E0F2F1' }]}><Ionicons name="location" size={10} color="#00695C" /><Text style={[styles.miniTagText, { color: '#00695C' }]}>{tags.place}</Text></View>}
-                    {tags.tools.map(t => <View key={t} style={[styles.miniTag, { backgroundColor: '#E3F2FD' }]}><Text style={[styles.miniTagText, { color: '#1565C0' }]}>{t}</Text></View>)}
-                </View>
-                <TouchableOpacity style={styles.addTagBtn} onPress={onEdit}>
-                    <Ionicons name="add" size={18} color="#666" />
-                </TouchableOpacity>
-            </View>
-        );
-    };
 
     return (
         <View style={styles.container}>
@@ -277,33 +258,91 @@ export default function AddTaskScreen() {
                     <Text style={styles.submitBtnText}>Create Task</Text>
                 </TouchableOpacity>
             </View>
-
-            {/* Modal (保持原本邏輯，僅省略重複樣式以節省篇幅，內容與上一版相同，但已連接) */}
+            {/* Tag Selection Modal */}
             <Modal visible={!!editingTarget} animationType="slide" transparent>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalCard}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Select Tags</Text>
-                            <TouchableOpacity onPress={() => setEditingTarget(null)}><Ionicons name="close" size={24} color="#333" /></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setEditingTarget(null)}>
+                                <Ionicons name="close" size={24} color="#333" />
+                            </TouchableOpacity>
                         </View>
+
                         <ScrollView style={{ maxHeight: 400 }}>
-                            {/* ... 這裡放入上一版的 Tag 選擇邏輯 (Priority, Attention, Tools, Place) ... */}
-                            {/* 為了完整性，這裡簡略示意，請將上一版的 Modal 內容貼過來，或直接使用上一版的 Modal 程式碼 */}
-                            <Text style={styles.modalLabel}>Priority</Text>
-                            <View style={styles.chipContainer}>
-                                {TAG_OPTIONS.priority.map(p => (
-                                    <TouchableOpacity key={p} style={[styles.chip, styles.chipOutline, tempTags.priority === p && styles.chipPrioritySelected]} onPress={() => setTempTags({ ...tempTags, priority: tempTags.priority === p ? undefined : p })}><Text style={[styles.chipText, tempTags.priority === p && styles.chipTextSelected]}>{p}</Text></TouchableOpacity>
-                                ))}
+                            {/* Priority Section */}
+                            <TagSection
+                                title="Priority"
+                                options={TAG_OPTIONS.priority}
+                                selectedValue={tempTags.priority}
+                                onSelect={(value) => {
+                                    setTempTags({
+                                        ...tempTags,
+                                        priority: tempTags.priority === value ? undefined : value
+                                    });
+                                }}
+                                selectedStyle={styles.chipPrioritySelected}
+                            />
+
+                            {/* Attention Section */}
+                            <TagSection
+                                title="Attention"
+                                options={TAG_OPTIONS.attention}
+                                selectedValue={tempTags.attention}
+                                onSelect={(value) => {
+                                    setTempTags({
+                                        ...tempTags,
+                                        attention: tempTags.attention === value ? undefined : value
+                                    });
+                                }}
+                                selectedStyle={styles.chipAttentionSelected}
+                            />
+
+                            {/* Tools Section */}
+                            <TagSection
+                                title="Tools"
+                                options={TAG_OPTIONS.tools}
+                                selectedValues={tempTags.tools}
+                                onSelect={toggleTool}
+                                selectedStyle={styles.chipToolSelected}
+                                isMultiSelect={true}
+                            />
+
+                            {/* Place Section */}
+                            <TagSection
+                                title="Place"
+                                options={PRESET_PLACES}
+                                selectedValue={tempTags.place}
+                                onSelect={(value) => {
+                                    setTempTags({
+                                        ...tempTags,
+                                        place: tempTags.place === value ? undefined : value
+                                    });
+                                    setCustomPlace('');
+                                }}
+                                selectedStyle={styles.chipPlaceSelected}
+                            />
+
+                            {/* Custom Place Input */}
+                            <View style={styles.customPlaceRow}>
+                                <Ionicons name="pencil" size={16} color="#666" />
+                                <TextInput
+                                    style={styles.customPlaceInput}
+                                    placeholder="Custom place..."
+                                    value={customPlace}
+                                    onChangeText={(text) => {
+                                        setCustomPlace(text);
+                                        if (text) {
+                                            setTempTags({ ...tempTags, place: undefined });
+                                        }
+                                    }}
+                                />
                             </View>
-                            <Text style={styles.modalLabel}>Attention</Text>
-                            <View style={styles.chipContainer}>{TAG_OPTIONS.attention.map(a => (<TouchableOpacity key={a} style={[styles.chip, styles.chipOutline, tempTags.attention === a && styles.chipAttentionSelected]} onPress={() => setTempTags({ ...tempTags, attention: tempTags.attention === a ? undefined : a })}><Text style={[styles.chipText, tempTags.attention === a && styles.chipTextSelected]}>{a}</Text></TouchableOpacity>))}</View>
-                            <Text style={styles.modalLabel}>Tools</Text>
-                            <View style={styles.chipContainer}>{TAG_OPTIONS.tools.map(t => (<TouchableOpacity key={t} style={[styles.chip, styles.chipOutline, tempTags.tools.includes(t) && styles.chipToolSelected]} onPress={() => toggleTool(t)}><Text style={[styles.chipText, tempTags.tools.includes(t) && styles.chipTextSelected]}>{t}</Text></TouchableOpacity>))}</View>
-                            <Text style={styles.modalLabel}>Place</Text>
-                            <View style={styles.chipContainer}>{PRESET_PLACES.map(p => (<TouchableOpacity key={p} style={[styles.chip, styles.chipOutline, tempTags.place === p && styles.chipPlaceSelected]} onPress={() => { setTempTags({ ...tempTags, place: tempTags.place === p ? undefined : p }); setCustomPlace(''); }}><Text style={[styles.chipText, tempTags.place === p && styles.chipTextSelected]}>{p}</Text></TouchableOpacity>))}</View>
-                            <View style={styles.customPlaceRow}><Ionicons name="pencil" size={16} color="#666" /><TextInput style={styles.customPlaceInput} placeholder="Custom place..." value={customPlace} onChangeText={(text) => { setCustomPlace(text); if (text) setTempTags({ ...tempTags, place: undefined }); }} /></View>
                         </ScrollView>
-                        <TouchableOpacity style={styles.modalSaveBtn} onPress={saveTags}><Text style={styles.submitBtnText}>Confirm</Text></TouchableOpacity>
+
+                        <TouchableOpacity style={styles.modalSaveBtn} onPress={saveTags}>
+                            <Text style={styles.submitBtnText}>Confirm</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
@@ -353,12 +392,6 @@ const styles = StyleSheet.create({
     // Row 3
     stTagContainer: { paddingTop: 8, borderTopWidth: 1, borderTopColor: '#f9f9f9' },
 
-    // Tag & Modal (保持一致)
-    tagDisplayContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-    tagRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-    addTagBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' },
-    miniTag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 2 },
-    miniTagText: { fontSize: 11, fontWeight: '600' },
 
     footer: { padding: 20, borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#fff' },
     submitBtn: { backgroundColor: '#2196f3', padding: 16, borderRadius: 12, alignItems: 'center' },
@@ -369,9 +402,6 @@ const styles = StyleSheet.create({
     modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '85%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
     modalTitle: { fontSize: 18, fontWeight: 'bold' },
-    modalLabel: { marginTop: 16, marginBottom: 8, fontWeight: '600', color: '#666' },
-    chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chipOutline: { borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fff' },
     chipPrioritySelected: { backgroundColor: '#FF9800', borderColor: '#FF9800' },
     chipAttentionSelected: { backgroundColor: '#9C27B0', borderColor: '#9C27B0' },
     chipToolSelected: { backgroundColor: '#2196F3', borderColor: '#2196F3' },
