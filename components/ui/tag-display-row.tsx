@@ -2,50 +2,43 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export interface TaskTags {
-    priority?: string;
-    attention?: string;
-    tools: string[];
-    place?: string;
+    tagGroups: { [groupName: string]: string[] };
 }
 
 interface TagDisplayRowProps {
     tags: TaskTags;
     onEdit: () => void;
+    tagGroupColors?: { [groupName: string]: { bg: string; text: string } };
 }
 
-export function TagDisplayRow({ tags, onEdit }: TagDisplayRowProps) {
+// Default color mapping for different tag groups
+const DEFAULT_TAG_GROUP_COLORS: { [key: string]: { bg: string; text: string } } = {
+    Priority: { bg: '#FFF3E0', text: '#E65100' },
+    Attention: { bg: '#F3E5F5', text: '#7B1FA2' },
+    Tools: { bg: '#E3F2FD', text: '#1565C0' },
+    Place: { bg: '#E0F2F1', text: '#00695C' },
+};
+
+export function TagDisplayRow({ tags, onEdit, tagGroupColors }: TagDisplayRowProps) {
+    const colors = tagGroupColors || DEFAULT_TAG_GROUP_COLORS;
     return (
         <View style={styles.tagDisplayContainer}>
             <View style={styles.tagRow}>
-                {tags.priority && (
-                    <View style={[styles.miniTag, { backgroundColor: '#FFF3E0' }]}>
-                        <Text style={[styles.miniTagText, { color: '#E65100' }]}>
-                            {tags.priority}
-                        </Text>
-                    </View>
+                {tags.tagGroups && Object.entries(tags.tagGroups).map(([groupName, selectedTags]) =>
+                    (selectedTags || []).map((tag: string) => {
+                        const groupColors = colors[groupName] || { bg: '#E8F5E9', text: '#2E7D32' };
+                        return (
+                            <View key={`${groupName}-${tag}`} style={[styles.miniTag, { backgroundColor: groupColors.bg }]}>
+                                {groupName === 'Place' && (
+                                    <Ionicons name="location" size={10} color="#333" />
+                                )}
+                                <Text style={[styles.miniTagText, { color: '#333' }]}>
+                                    {tag}
+                                </Text>
+                            </View>
+                        );
+                    })
                 )}
-                {tags.attention && (
-                    <View style={[styles.miniTag, { backgroundColor: '#F3E5F5' }]}>
-                        <Text style={[styles.miniTagText, { color: '#7B1FA2' }]}>
-                            {tags.attention}
-                        </Text>
-                    </View>
-                )}
-                {tags.place && (
-                    <View style={[styles.miniTag, { backgroundColor: '#E0F2F1' }]}>
-                        <Ionicons name="location" size={10} color="#00695C" />
-                        <Text style={[styles.miniTagText, { color: '#00695C' }]}>
-                            {tags.place}
-                        </Text>
-                    </View>
-                )}
-                {tags.tools.map(t => (
-                    <View key={t} style={[styles.miniTag, { backgroundColor: '#E3F2FD' }]}>
-                        <Text style={[styles.miniTagText, { color: '#1565C0' }]}>
-                            {t}
-                        </Text>
-                    </View>
-                ))}
             </View>
             <TouchableOpacity style={styles.addTagBtn} onPress={onEdit}>
                 <Ionicons name="add" size={18} color="#666" />
