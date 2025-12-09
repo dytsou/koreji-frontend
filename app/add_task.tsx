@@ -341,41 +341,45 @@ export default function AddTaskScreen() {
         <View style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
 
-                <TextInput
-                    style={styles.mainInput}
-                    placeholder={TASK_SCREEN_STRINGS.addTask.taskTitlePlaceholder}
-                    value={mainTitle}
-                    onChangeText={setMainTitle}
-                />
-
-                <View style={styles.timeContainer}>
-                    <Text style={styles.label}>{TASK_SCREEN_STRINGS.addTask.timeLabel}</Text>
-                    <View style={[styles.timeBox, isTimeReadOnly && styles.timeBoxDisabled]}>
+                {/* Main Task Card - matching subtask structure */}
+                <View style={[styles.subtaskCard, { marginBottom: 24 }]}>
+                    {/* Row 1: Title, Time */}
+                    <View style={styles.stRowTop}>
                         <TextInput
-                            style={[styles.timeInput, isTimeReadOnly && { color: '#888' }]}
-                            keyboardType="numeric"
-                            value={isTimeReadOnly ? calculatedTotalTime : mainTime}
-                            onChangeText={setMainTime}
-                            editable={!isTimeReadOnly}
-                            placeholder={TASK_SCREEN_STRINGS.addTask.timePlaceholder}
+                            style={styles.mainTaskTitleInput}
+                            placeholder={TASK_SCREEN_STRINGS.addTask.taskTitlePlaceholder}
+                            value={mainTitle}
+                            onChangeText={setMainTitle}
                         />
+                        <View style={[styles.stTimeContainer, isTimeReadOnly && styles.timeBoxDisabled]}>
+                            <TextInput
+                                style={[styles.stTimeInput, isTimeReadOnly && { color: '#888' }]}
+                                keyboardType="numeric"
+                                value={isTimeReadOnly ? calculatedTotalTime : mainTime}
+                                onChangeText={setMainTime}
+                                editable={!isTimeReadOnly}
+                                placeholder={TASK_SCREEN_STRINGS.addTask.minPlaceholder}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Row 2: Description */}
+                    <TextInput
+                        style={styles.stDescInput}
+                        placeholder={TASK_SCREEN_STRINGS.addTask.descriptionPlaceholder}
+                        value={mainDesc}
+                        onChangeText={setMainDesc}
+                        multiline
+                    />
+
+                    {/* Row 3: Tags */}
+                    <View style={styles.stTagContainer}>
+                        <Text style={styles.label}>{TASK_SCREEN_STRINGS.addTask.tagsLabel}</Text>
+                        <View style={{ marginTop: 8 }}>
+                            <TagDisplayRow tags={mainTags} onEdit={() => openTagModal('main')} tagGroupColors={tagGroupColors} />
+                        </View>
                     </View>
                 </View>
-
-                <View style={styles.tagsContainer}>
-                    <Text style={styles.label}>{TASK_SCREEN_STRINGS.addTask.tagsLabel}</Text>
-                    <View style={{ marginTop: 8 }}>
-                        <TagDisplayRow tags={mainTags} onEdit={() => openTagModal('main')} tagGroupColors={tagGroupColors} />
-                    </View>
-                </View>
-
-                <TextInput
-                    style={[styles.input, styles.textArea]}
-                    placeholder={TASK_SCREEN_STRINGS.addTask.descriptionPlaceholder}
-                    value={mainDesc}
-                    onChangeText={setMainDesc}
-                    multiline
-                />
 
                 {/* === 子任務 Header 區域 (包含新按鈕) === */}
                 <View style={styles.subtaskHeader}>
@@ -683,6 +687,7 @@ const styles = StyleSheet.create({
 
     stRowTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
     stTitleInput: { flex: 1, fontSize: 16, fontWeight: '500', color: '#333', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 4 },
+    mainTaskTitleInput: { flex: 1, fontSize: 20, fontWeight: '600', color: '#333', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 4 },
     stTimeContainer: { width: 60, borderWidth: 1, borderColor: '#ddd', borderRadius: 6, backgroundColor: '#fafafa', paddingVertical: 2 },
     stTimeInput: { textAlign: 'center', fontSize: 14, color: '#333' },
     deleteBtn: { padding: 4, backgroundColor: '#f0f0f0', borderRadius: 12 },
