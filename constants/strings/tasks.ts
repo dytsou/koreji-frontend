@@ -23,7 +23,7 @@ const TASK_SCREEN_STRINGS = {
     newTagPlaceholder: 'New tag...',
     newTagGroupPlaceholder: 'New tag group name...',
     timePlaceholder: '0',
-    minPlaceholder: 'Min',
+    minPlaceholder: 'min',
     deadlinePlaceholder: 'YYYY-MM-DD',
     
     // Buttons

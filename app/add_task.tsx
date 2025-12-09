@@ -70,6 +70,7 @@ interface LocalSubTask {
     title: string;
     description: string;
     estimatedTime: string;
+    deadline: Date | null;
     tags: TaskTags;
 }
 
@@ -164,6 +165,27 @@ export default function AddTaskScreen() {
     const handleDatePickerCancel = () => {
         console.log('[DEBUG] handleDatePickerCancel called. Deadline will remain:', mainDeadline?.toISOString());
         setShowDatePicker(false);
+    };
+
+    const handleSubtaskDateChange = (subtaskId: string, event: any, selectedDate?: Date) => {
+        if (Platform.OS === 'android') {
+            if (event.type === 'set' && selectedDate) {
+                updateSubtask(subtaskId, 'deadline', selectedDate);
+            }
+            setSubtaskDatePickers(prev => ({ ...prev, [subtaskId]: false }));
+        } else {
+            if (selectedDate) {
+                updateSubtask(subtaskId, 'deadline', selectedDate);
+            }
+        }
+    };
+
+    const handleSubtaskDatePickerDone = (subtaskId: string) => {
+        setSubtaskDatePickers(prev => ({ ...prev, [subtaskId]: false }));
+    };
+
+    const handleSubtaskDatePickerCancel = (subtaskId: string) => {
+        setSubtaskDatePickers(prev => ({ ...prev, [subtaskId]: false }));
     };
 
     // Debug log when deadline state changes
@@ -340,18 +362,21 @@ export default function AddTaskScreen() {
     };
 
     // --- 子任務操作 ---
+    const [subtaskDatePickers, setSubtaskDatePickers] = useState<{ [id: string]: boolean }>({});
+
     const addSubtask = () => {
         const newSub: LocalSubTask = {
             id: Date.now().toString(),
             title: '',
             description: '',
             estimatedTime: '',
+            deadline: null,
             tags: { tagGroups: {} }
         };
         setSubtasks([...subtasks, newSub]);
     };
 
-    const updateSubtask = (id: string, field: keyof LocalSubTask, value: string) => {
+    const updateSubtask = (id: string, field: keyof LocalSubTask, value: string | Date | null) => {
         setSubtasks(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
     };
 
@@ -395,6 +420,7 @@ export default function AddTaskScreen() {
             description: sub.description,
             category: null,
             estimatedTime: parseInt(sub.estimatedTime) || 0,
+            deadline: sub.deadline ? formatDate(sub.deadline) : null,
             tags: sub.tags,
             isCompleted: false,
             createdAt,
@@ -435,6 +461,7 @@ export default function AddTaskScreen() {
                                         onChangeText={setMainTime}
                                         editable={!isTimeReadOnly}
                                         placeholder={TASK_SCREEN_STRINGS.addTask.minPlaceholder}
+                                        placeholderTextColor="#999"
                                     />
                                 </View>
                             </View>
@@ -494,7 +521,7 @@ export default function AddTaskScreen() {
                 <View style={styles.subtaskList}>
                     {subtasks.map((sub, index) => (
                         <View key={sub.id} style={styles.subtaskCard}>
-                            {/* Row 1: Title, Time, Delete */}
+                            {/* Row 1: Title and Delete */}
                             <View style={styles.stRowTop}>
                                 <TextInput
                                     style={styles.stTitleInput}
@@ -502,29 +529,55 @@ export default function AddTaskScreen() {
                                     value={sub.title}
                                     onChangeText={(text) => updateSubtask(sub.id, 'title', text)}
                                 />
-                                <View style={styles.stTimeContainer}>
-                                    <TextInput
-                                        style={styles.stTimeInput}
-                                        placeholder={TASK_SCREEN_STRINGS.addTask.minPlaceholder}
-                                        keyboardType="numeric"
-                                        value={sub.estimatedTime}
-                                        onChangeText={(text) => updateSubtask(sub.id, 'estimatedTime', text)}
-                                    />
-                                </View>
                                 <TouchableOpacity onPress={() => removeSubtask(sub.id)} style={styles.deleteBtn}>
                                     <Ionicons name="close" size={18} color="#666" />
                                 </TouchableOpacity>
                             </View>
 
-                            {/* Row 2: Description */}
+                            {/* Row 2: Time and Deadline */}
+                            <View style={styles.timeDeadlineSection}>
+                                <View style={styles.timeDeadlineRow}>
+                                    <View style={styles.timeFieldContainer}>
+                                        <Text style={styles.fieldLabel}>{TASK_SCREEN_STRINGS.addTask.timeLabel}</Text>
+                                        <View style={styles.stTimeContainer}>
+                                            <TextInput
+                                                style={styles.stTimeInput}
+                                                placeholder={TASK_SCREEN_STRINGS.addTask.minPlaceholder}
+                                                placeholderTextColor="#999"
+                                                keyboardType="numeric"
+                                                value={sub.estimatedTime}
+                                                onChangeText={(text) => updateSubtask(sub.id, 'estimatedTime', text)}
+                                            />
+                                        </View>
+                                    </View>
+                                    <View style={styles.deadlineFieldContainer}>
+                                        <Text style={styles.fieldLabel}>{TASK_SCREEN_STRINGS.addTask.deadlineLabel}</Text>
+                                        <TouchableOpacity 
+                                            style={styles.deadlineContainer}
+                                            onPress={() => {
+                                                console.log('[DEBUG] Subtask deadline button pressed. Current deadline:', sub.deadline?.toISOString());
+                                                setSubtaskDatePickers(prev => ({ ...prev, [sub.id]: true }));
+                                            }}
+                                        >
+                                            <Text style={[styles.deadlineInput, !sub.deadline && styles.deadlinePlaceholder]}>
+                                                {sub.deadline ? formatDate(sub.deadline) : TASK_SCREEN_STRINGS.addTask.deadlinePlaceholder}
+                                            </Text>
+                                            <Ionicons name="calendar-outline" size={16} color="#666" style={{ marginLeft: 4 }} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* Row 3: Description */}
                             <TextInput
                                 style={styles.stDescInput}
                                 placeholder={TASK_SCREEN_STRINGS.addTask.subtaskDescriptionPlaceholder}
                                 value={sub.description}
                                 onChangeText={(text) => updateSubtask(sub.id, 'description', text)}
+                                multiline
                             />
 
-                            {/* Row 3: Tags */}
+                            {/* Row 4: Tags */}
                             <View style={styles.stTagContainer}>
                                 <Text style={styles.label}>{TASK_SCREEN_STRINGS.addTask.subtaskTagsLabel}</Text>
                                 <View style={{ marginTop: 8 }}>
@@ -654,6 +707,107 @@ export default function AddTaskScreen() {
                     )}
                 </>
             )}
+
+            {/* Subtask Date Pickers */}
+            {Object.entries(subtaskDatePickers).map(([subtaskId, isOpen]) => {
+                if (!isOpen) return null;
+                const subtask = subtasks.find(s => s.id === subtaskId);
+                if (!subtask) return null;
+
+                return (
+                    <React.Fragment key={subtaskId}>
+                        {Platform.OS === 'web' ? (
+                            <Modal visible={isOpen} transparent animationType="fade">
+                                <TouchableOpacity 
+                                    style={styles.modalOverlayCentered}
+                                    activeOpacity={1}
+                                    onPress={() => handleSubtaskDatePickerCancel(subtaskId)}
+                                >
+                                    <TouchableOpacity 
+                                        activeOpacity={1} 
+                                        onPress={(e) => e.stopPropagation()}
+                                    >
+                                        <View style={styles.datePickerContainerCentered}>
+                                            <View style={styles.datePickerActions}>
+                                                <TouchableOpacity onPress={() => handleSubtaskDatePickerCancel(subtaskId)}>
+                                                    <Text style={styles.datePickerCancel}>Cancel</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity onPress={() => handleSubtaskDatePickerDone(subtaskId)}>
+                                                    <Text style={styles.datePickerDone}>Done</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            <View style={styles.webDateInputContainer}>
+                                                <Text style={styles.webDateLabel}>Select Deadline:</Text>
+                                                <View style={styles.webDateInputWrapper}>
+                                                    {/* @ts-ignore - web only */}
+                                                    <input
+                                                        type="date"
+                                                        style={styles.webDateInputNative}
+                                                        value={subtask.deadline ? formatDate(subtask.deadline) : ''}
+                                                        min={new Date().toISOString().split('T')[0]}
+                                                        onChange={(e) => {
+                                                            if (e.target.value) {
+                                                                const date = new Date(e.target.value + 'T00:00:00');
+                                                                if (!isNaN(date.getTime())) {
+                                                                    updateSubtask(subtaskId, 'deadline', date);
+                                                                }
+                                                            }
+                                                        }}
+                                                    />
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+                                </TouchableOpacity>
+                            </Modal>
+                        ) : Platform.OS === 'ios' ? (
+                            <Modal visible={isOpen} transparent animationType="fade">
+                                <TouchableOpacity 
+                                    style={styles.modalOverlayCentered}
+                                    activeOpacity={1}
+                                    onPress={() => handleSubtaskDatePickerCancel(subtaskId)}
+                                >
+                                    <TouchableOpacity 
+                                        activeOpacity={1} 
+                                        onPress={(e) => e.stopPropagation()}
+                                    >
+                                        <View style={styles.datePickerContainerCentered}>
+                                            <View style={styles.datePickerActions}>
+                                                <TouchableOpacity onPress={() => handleSubtaskDatePickerCancel(subtaskId)}>
+                                                    <Text style={styles.datePickerCancel}>Cancel</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity onPress={() => handleSubtaskDatePickerDone(subtaskId)}>
+                                                    <Text style={styles.datePickerDone}>Done</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            <View style={styles.datePickerWrapper}>
+                                                <DateTimePicker
+                                                    value={subtask.deadline || new Date()}
+                                                    mode="date"
+                                                    display="spinner"
+                                                    onChange={(event, date) => handleSubtaskDateChange(subtaskId, event, date)}
+                                                    minimumDate={new Date()}
+                                                    style={styles.datePickerComponent}
+                                                />
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+                                </TouchableOpacity>
+                            </Modal>
+                        ) : (
+                            isOpen && (
+                                <DateTimePicker
+                                    value={subtask.deadline || new Date()}
+                                    mode="date"
+                                    display="default"
+                                    onChange={(event, date) => handleSubtaskDateChange(subtaskId, event, date)}
+                                    minimumDate={new Date()}
+                                />
+                            )
+                        )}
+                    </React.Fragment>
+                );
+            })}
             
             {/* Tag Selection Modal */}
             <Modal visible={!!editingTarget} animationType="slide" transparent>
@@ -899,7 +1053,7 @@ const styles = StyleSheet.create({
     deadlineFieldContainer: { flex: 1, minWidth: 120 },
     fieldLabel: { fontSize: 13, fontWeight: '600', color: '#888', marginBottom: 6 },
     stTimeContainer: { width: '100%', borderWidth: 1, borderColor: '#ddd', borderRadius: 6, backgroundColor: '#fafafa', paddingVertical: 2 },
-    stTimeInput: { textAlign: 'center', fontSize: 14, color: '#333' },
+    stTimeInput: { textAlign: 'left', fontSize: 14, color: '#333', paddingHorizontal: 8 },
     deadlineContainer: { 
         flex: 1, 
         borderWidth: 1, 
