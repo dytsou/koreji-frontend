@@ -443,6 +443,7 @@ export default function AddTaskScreen() {
                         <TextInput
                             style={styles.mainTaskTitleInput}
                             placeholder={TASK_SCREEN_STRINGS.addTask.taskTitlePlaceholder}
+                            placeholderTextColor="#ccc"
                             value={mainTitle}
                             onChangeText={setMainTitle}
                         />
@@ -461,7 +462,7 @@ export default function AddTaskScreen() {
                                         onChangeText={setMainTime}
                                         editable={!isTimeReadOnly}
                                         placeholder={TASK_SCREEN_STRINGS.addTask.minPlaceholder}
-                                        placeholderTextColor="#999"
+                                        placeholderTextColor="#ccc"
                                     />
                                 </View>
                             </View>
@@ -487,6 +488,7 @@ export default function AddTaskScreen() {
                     <TextInput
                         style={styles.stDescInput}
                         placeholder={TASK_SCREEN_STRINGS.addTask.descriptionPlaceholder}
+                        placeholderTextColor="#ccc"
                         value={mainDesc}
                         onChangeText={setMainDesc}
                         multiline
@@ -526,6 +528,7 @@ export default function AddTaskScreen() {
                                 <TextInput
                                     style={styles.stTitleInput}
                                     placeholder={TASK_SCREEN_STRINGS.addTask.getSubtaskTitlePlaceholder(index + 1)}
+                                    placeholderTextColor="#ccc"
                                     value={sub.title}
                                     onChangeText={(text) => updateSubtask(sub.id, 'title', text)}
                                 />
@@ -543,7 +546,7 @@ export default function AddTaskScreen() {
                                             <TextInput
                                                 style={styles.stTimeInput}
                                                 placeholder={TASK_SCREEN_STRINGS.addTask.minPlaceholder}
-                                                placeholderTextColor="#999"
+                                                placeholderTextColor="#ccc"
                                                 keyboardType="numeric"
                                                 value={sub.estimatedTime}
                                                 onChangeText={(text) => updateSubtask(sub.id, 'estimatedTime', text)}
@@ -572,6 +575,7 @@ export default function AddTaskScreen() {
                             <TextInput
                                 style={styles.stDescInput}
                                 placeholder={TASK_SCREEN_STRINGS.addTask.subtaskDescriptionPlaceholder}
+                                placeholderTextColor="#ccc"
                                 value={sub.description}
                                 onChangeText={(text) => updateSubtask(sub.id, 'description', text)}
                                 multiline
@@ -645,6 +649,7 @@ export default function AddTaskScreen() {
                                                         style={styles.webDateInput}
                                                         value={mainDeadline ? formatDate(mainDeadline) : ''}
                                                         placeholder="YYYY-MM-DD"
+                                                        placeholderTextColor="#ccc"
                                                         onChangeText={(text) => {
                                                             console.log('[DEBUG] Date input changed:', text);
                                                             if (text) {
@@ -885,6 +890,7 @@ export default function AddTaskScreen() {
                                 <TextInput
                                     style={styles.newPlaceInput}
                                     placeholder={TASK_SCREEN_STRINGS.addTask.newTagPlaceholder}
+                                    placeholderTextColor="#ccc"
                                     value={newTagInGroupName}
                                     onChangeText={setNewTagInGroupName}
                                     autoFocus
@@ -926,6 +932,7 @@ export default function AddTaskScreen() {
             <TextInput
                 style={styles.newPlaceInput}
                 placeholder={TASK_SCREEN_STRINGS.addTask.newTagGroupPlaceholder}
+                placeholderTextColor="#ccc"
                 value={newTagGroupName}
                 onChangeText={setNewTagGroupName}
                 autoFocus
@@ -1064,7 +1071,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     deadlineInput: { fontSize: 14, color: '#333' },
-    deadlinePlaceholder: { color: '#999' },
+    deadlinePlaceholder: { color: '#ccc' },
     datePickerContainer: {
         position: 'absolute',
         bottom: 0,
