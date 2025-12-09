@@ -42,3 +42,4 @@ export function useResponsive(): UseResponsiveReturn {
     screenSize,
   };
 }
+

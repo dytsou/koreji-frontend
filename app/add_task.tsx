@@ -353,49 +353,30 @@ export default function AddTaskScreen() {
                 >
                     {useCategoryDropdown ? (
                         // Dropdown when categories would overflow
-                        <View style={styles.categoryDropdownWrapper}>
-                            <FilterDropdown
-                                label=""
-                                selectedValue={category}
-                                options={categories}
-                                onSelect={(value) => setCategory(Array.isArray(value) ? value[0] : value)}
-                            />
-                            {showAddCategory ? (
-                                <View style={styles.newPlaceInputContainer}>
-                                    <TextInput
-                                        style={styles.newPlaceInput}
-                                        placeholder="New category..."
-                                        value={newCategoryName}
-                                        onChangeText={setNewCategoryName}
-                                        autoFocus
-                                        onSubmitEditing={handleAddCategory}
-                                    />
-                                    <TouchableOpacity 
-                                        style={styles.savePlaceBtn}
-                                        onPress={handleAddCategory}
-                                        disabled={!newCategoryName.trim()}
-                                    >
-                                        <Ionicons name="checkmark" size={16} color={newCategoryName.trim() ? "#4CAF50" : "#ccc"} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity 
-                                        style={styles.cancelPlaceBtn}
-                                        onPress={() => {
-                                            setShowAddCategory(false);
-                                            setNewCategoryName('');
-                                        }}
-                                    >
-                                        <Ionicons name="close" size={16} color="#666" />
-                                    </TouchableOpacity>
-                                </View>
-                            ) : (
-                                <TouchableOpacity 
-                                    style={styles.addCategoryButtonSmall}
-                                    onPress={() => setShowAddCategory(true)}
-                                >
-                                    <Ionicons name="add" size={20} color="#666" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
+                        <FilterDropdown
+                            label=""
+                            selectedValue={category}
+                            options={categories}
+                            onSelect={(value) => setCategory(Array.isArray(value) ? value[0] : value)}
+                            onAddNew={{
+                                showInput: showAddCategory,
+                                inputValue: newCategoryName,
+                                onInputChange: (value) => {
+                                    if (value === '__SHOW_INPUT__') {
+                                        setShowAddCategory(true);
+                                        setNewCategoryName('');
+                                    } else {
+                                        setNewCategoryName(value);
+                                    }
+                                },
+                                onSave: handleAddCategory,
+                                onCancel: () => {
+                                    setShowAddCategory(false);
+                                    setNewCategoryName('');
+                                },
+                                placeholder: "New category...",
+                            }}
+                        />
                     ) : (
                         // Horizontal scroll chips when categories fit
                         <View style={styles.categoryChipsWrapper}>
