@@ -1032,17 +1032,14 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 20,
         elevation: 2,
-        shadowColor: '#9C27B0',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
+        boxShadow: '0px 2px 3px 0px rgba(156, 39, 176, 0.3)',
         flexShrink: 0, // Prevent AI button from shrinking
     },
     aiButtonText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
 
     // Subtask List & Card
     subtaskList: { gap: 16 },
-    subtaskCard: { backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#eee', elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 2 } },
+    subtaskCard: { backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#eee', elevation: 1, boxShadow: '0px 2px 3px 0px rgba(0, 0, 0, 0.05)' },
 
     stRowTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
     stTitleInput: { flex: 1, fontSize: 16, fontWeight: '500', color: '#333', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 4 },
@@ -1077,10 +1074,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        boxShadow: '0px -2px 4px 0px rgba(0, 0, 0, 0.1)',
         elevation: 5,
     },
     modalOverlayCentered: {
@@ -1097,10 +1091,7 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: '90%',
         overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
+        boxShadow: '0px 2px 8px 0px rgba(0, 0, 0, 0.25)',
         elevation: 5,
     },
     datePickerActions: {
