@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Alert
 } from 'react-native';
@@ -8,7 +8,7 @@ import { TagDisplayRow, type TaskTags } from '@/components/ui/tag-display-row';
 import { FilterDropdown } from '@/components/ui/filter-dropdown';
 
 // --- 常數定義 ---
-const CATEGORIES = ['School', 'Home', 'Work', 'Personal'];
+const DEFAULT_CATEGORIES = ['School', 'Home', 'Work', 'Personal'];
 
 // Tag groups configuration
 const TAG_GROUPS: { [groupName: string]: { tags: string[]; isSingleSelect: boolean; allowAddTags: boolean; color: { bg: string; text: string } } } = {
@@ -67,11 +67,14 @@ interface LocalSubTask {
 export default function AddTaskScreen() {
     const router = useRouter();
     const [useCategoryDropdown, setUseCategoryDropdown] = useState(false);
+    const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+    const [showAddCategory, setShowAddCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
 
     // --- 主任務狀態 ---
     const [mainTitle, setMainTitle] = useState('');
     const [mainDesc, setMainDesc] = useState('');
-    const [category, setCategory] = useState(CATEGORIES[0]);
+    const [category, setCategory] = useState(DEFAULT_CATEGORIES[0]);
     const [mainTime, setMainTime] = useState('');
     const [mainTags, setMainTags] = useState<TaskTags>({ tagGroups: {} });
 
@@ -254,6 +257,25 @@ export default function AddTaskScreen() {
         setSubtasks(prev => prev.filter(s => s.id !== id));
     };
 
+    // Ensure selected category exists in categories list
+    useEffect(() => {
+        if (!categories.includes(category) && categories.length > 0) {
+            setCategory(categories[0]);
+        }
+    }, [categories, category]);
+
+    // Add new category
+    const handleAddCategory = () => {
+        const trimmedName = newCategoryName.trim();
+        if (trimmedName && !categories.includes(trimmedName)) {
+            const newCategories = [...categories, trimmedName];
+            setCategories(newCategories);
+            setCategory(trimmedName); // Select the newly added category
+            setNewCategoryName('');
+            setShowAddCategory(false);
+        }
+    };
+
     // Check if category chips would overflow based on container width
     const handleCategoryContainerLayout = (event: any) => {
         const { width } = event.nativeEvent.layout;
@@ -265,11 +287,13 @@ export default function AddTaskScreen() {
             const gap = 12;
             // Calculate estimated width for each category based on text length
             // Rough estimation: ~9px per character for font size 14, font weight 500
-            const estimatedWidths = CATEGORIES.map(cat => {
+            const estimatedWidths = categories.map(cat => {
                 const estimatedTextWidth = cat.length * 9;
                 return chipPadding + estimatedTextWidth;
             });
-            const totalWidthNeeded = estimatedWidths.reduce((sum, w) => sum + w, 0) + (CATEGORIES.length - 1) * gap;
+            // Add space for the add button if showing chips
+            const addButtonWidth = 40; // Approximate width of add button
+            const totalWidthNeeded = estimatedWidths.reduce((sum, w) => sum + w, 0) + (categories.length - 1) * gap + (useCategoryDropdown ? 0 : addButtonWidth);
             // Add buffer (20px) to account for measurement variations and rounding
             setUseCategoryDropdown(totalWidthNeeded + 20 > width);
         }
@@ -329,25 +353,99 @@ export default function AddTaskScreen() {
                 >
                     {useCategoryDropdown ? (
                         // Dropdown when categories would overflow
-                        <FilterDropdown
-                            label=""
-                            selectedValue={category}
-                            options={CATEGORIES}
-                            onSelect={(value) => setCategory(value as typeof CATEGORIES[number])}
-                        />
+                        <View style={styles.categoryDropdownWrapper}>
+                            <FilterDropdown
+                                label=""
+                                selectedValue={category}
+                                options={categories}
+                                onSelect={(value) => setCategory(Array.isArray(value) ? value[0] : value)}
+                            />
+                            {showAddCategory ? (
+                                <View style={styles.newPlaceInputContainer}>
+                                    <TextInput
+                                        style={styles.newPlaceInput}
+                                        placeholder="New category..."
+                                        value={newCategoryName}
+                                        onChangeText={setNewCategoryName}
+                                        autoFocus
+                                        onSubmitEditing={handleAddCategory}
+                                    />
+                                    <TouchableOpacity 
+                                        style={styles.savePlaceBtn}
+                                        onPress={handleAddCategory}
+                                        disabled={!newCategoryName.trim()}
+                                    >
+                                        <Ionicons name="checkmark" size={16} color={newCategoryName.trim() ? "#4CAF50" : "#ccc"} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        style={styles.cancelPlaceBtn}
+                                        onPress={() => {
+                                            setShowAddCategory(false);
+                                            setNewCategoryName('');
+                                        }}
+                                    >
+                                        <Ionicons name="close" size={16} color="#666" />
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <TouchableOpacity 
+                                    style={styles.addCategoryButtonSmall}
+                                    onPress={() => setShowAddCategory(true)}
+                                >
+                                    <Ionicons name="add" size={20} color="#666" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     ) : (
                         // Horizontal scroll chips when categories fit
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScrollContent}>
-                            {CATEGORIES.map(cat => (
-                                <TouchableOpacity
-                                    key={cat}
-                                    style={[styles.chip, category === cat && styles.chipSelected]}
-                                    onPress={() => setCategory(cat)}
-                                >
-                                    <Text style={[styles.chipText, category === cat && styles.chipTextSelected]}>{cat}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+                        <View style={styles.categoryChipsWrapper}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScrollContent}>
+                                {categories.map(cat => (
+                                    <TouchableOpacity
+                                        key={cat}
+                                        style={[styles.chip, category === cat && styles.chipSelected]}
+                                        onPress={() => setCategory(cat)}
+                                    >
+                                        <Text style={[styles.chipText, category === cat && styles.chipTextSelected]}>{cat}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                                {showAddCategory ? (
+                                    <View style={styles.newPlaceInputContainer}>
+                                        <TextInput
+                                            style={styles.newPlaceInput}
+                                            placeholder="New category..."
+                                            value={newCategoryName}
+                                            onChangeText={setNewCategoryName}
+                                            autoFocus
+                                            onSubmitEditing={handleAddCategory}
+                                        />
+                                        <TouchableOpacity 
+                                            style={styles.savePlaceBtn}
+                                            onPress={handleAddCategory}
+                                            disabled={!newCategoryName.trim()}
+                                        >
+                                            <Ionicons name="checkmark" size={16} color={newCategoryName.trim() ? "#4CAF50" : "#ccc"} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity 
+                                            style={styles.cancelPlaceBtn}
+                                            onPress={() => {
+                                                setShowAddCategory(false);
+                                                setNewCategoryName('');
+                                            }}
+                                        >
+                                            <Ionicons name="close" size={16} color="#666" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity 
+                                        style={styles.addCategoryChip}
+                                        onPress={() => setShowAddCategory(true)}
+                                    >
+                                        <Ionicons name="add" size={18} color="#666" />
+                                    </TouchableOpacity>
+                                )}
+                            </ScrollView>
+                        </View>
                     )}
                 </View>
 
@@ -610,12 +708,35 @@ const styles = StyleSheet.create({
     sectionTitle: { fontSize: 22, fontWeight: '700', color: '#333', marginBottom: 16 },
 
     // Category Optimizations
-    categoryContainer: { width: '100%' },
-    catScrollContent: { paddingBottom: 8, gap: 12 },
+    categoryContainer: { width: '100%', gap: 8 },
+    categoryDropdownWrapper: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    categoryChipsWrapper: { width: '100%' },
+    catScrollContent: { paddingBottom: 8, gap: 12, alignItems: 'center' },
     chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, backgroundColor: '#f0f0f0' },
     chipSelected: { backgroundColor: '#333' },
     chipText: { fontSize: 14, fontWeight: '500', color: '#333' },
     chipTextSelected: { color: '#FFFFFF' },
+    addCategoryChip: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderStyle: 'dashed',
+    },
+    addCategoryButtonSmall: {
+        width: 40,
+        height: 40,
+        borderRadius: 8,
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#CCCCCC',
+    },
 
     mainInput: { fontSize: 24, fontWeight: '600', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee', marginBottom: 16, marginTop: 8 },
     label: { fontSize: 13, fontWeight: '600', color: '#888', marginBottom: 6 },
