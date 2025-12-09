@@ -5,6 +5,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useResponsive } from '@/hooks/use-responsive';
+import { TASK_SCREEN_STRINGS } from '@/constants/strings/tasks';
 
 // --- 資料型別 ---
 interface TaskItem {
@@ -187,7 +188,7 @@ export default function TasksScreen() {
           {/* 上半部：類別與標題 */}
           <View style={styles.headerTop}>
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{item.category || 'TASK'}</Text>
+              <Text style={styles.categoryText}>{item.category || TASK_SCREEN_STRINGS.tasksList.defaultCategory}</Text>
             </View>
 
             {/* 標題 (可編輯) */}
@@ -210,7 +211,7 @@ export default function TasksScreen() {
           {/* 描述 (可編輯) */}
           <EditableField
             value={item.description}
-            placeholder="新增描述..."
+            placeholder={TASK_SCREEN_STRINGS.tasksList.addDescriptionPlaceholder}
             textStyle={[styles.taskDesc, { fontSize: taskDescSize }]}
             onSave={(val) => updateTaskField(item.id, 'description', val)}
           />
@@ -231,7 +232,7 @@ export default function TasksScreen() {
                   containerStyle={styles.timeTagContainer}
                   onSave={(val) => updateTaskField(item.id, 'estimatedTime', parseInt(val) || 0)}
                 />
-                <Text style={styles.tagUnit}>min</Text>
+                <Text style={styles.tagUnit}>{TASK_SCREEN_STRINGS.tasksList.timeUnit}</Text>
               </>
             )}
 
@@ -246,12 +247,16 @@ export default function TasksScreen() {
                 <View style={styles.progressBarBg}>
                   <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
                 </View>
-                <Text style={styles.progressText}>{Math.round(progressPercent)}%</Text>
+                <Text style={styles.progressText}>
+                  {Math.round(progressPercent)}{TASK_SCREEN_STRINGS.tasksList.progressUnit}
+                </Text>
               </View>
 
               {/* 這裡顯示加總後的時間 (唯讀) */}
               <View style={styles.totalTimeBadge}>
-                <Text style={styles.totalTimeText}>總計 {item.displayTime} min</Text>
+                <Text style={styles.totalTimeText}>
+                  {TASK_SCREEN_STRINGS.tasksList.totalTimePrefix} {item.displayTime} {TASK_SCREEN_STRINGS.tasksList.totalTimeSuffix}
+                </Text>
               </View>
             </View>
           )}
@@ -285,7 +290,7 @@ export default function TasksScreen() {
                     {/* 子任務描述 (可編輯) */}
                     <EditableField
                       value={sub.description}
-                      placeholder="無描述"
+                      placeholder={TASK_SCREEN_STRINGS.tasksList.noDescriptionPlaceholder}
                       textStyle={styles.subtaskDesc}
                       onSave={(val) => updateTaskField(sub.id, 'description', val)}
                     />
@@ -303,7 +308,7 @@ export default function TasksScreen() {
                     containerStyle={styles.timeTagContainer}
                     onSave={(val) => updateTaskField(sub.id, 'estimatedTime', parseInt(val) || 0)}
                   />
-                  <Text style={styles.tagUnit}>min</Text>
+                  <Text style={styles.tagUnit}>{TASK_SCREEN_STRINGS.tasksList.timeUnit}</Text>
                   <TagsDisplay tags={sub.tags} />
                 </View>
               </View>
@@ -325,7 +330,7 @@ export default function TasksScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={[styles.header, { padding: headerPadding }]}>
-        <Text style={[styles.headerTitle, { fontSize: headerTitleSize }]}>Task List</Text>
+        <Text style={[styles.headerTitle, { fontSize: headerTitleSize }]}>{TASK_SCREEN_STRINGS.headerTitle}</Text>
       </View>
       <FlatList
         data={structuredTasks}

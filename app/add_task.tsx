@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { TagDisplayRow, type TaskTags } from '@/components/ui/tag-display-row';
 import { FilterDropdown } from '@/components/ui/filter-dropdown';
+import { TASK_SCREEN_STRINGS } from '@/constants/strings/tasks';
 
 // --- 常數定義 ---
 const DEFAULT_CATEGORIES = ['School', 'Home', 'Work', 'Personal'];
@@ -109,10 +110,16 @@ export default function AddTaskScreen() {
     // --- AI 生成邏輯 (Placeholder) ---
     const handleAIGenerate = () => {
         if (!mainTitle.trim()) {
-            Alert.alert('提示', '請先輸入任務標題，AI 才能幫您生成子任務喔！');
+            Alert.alert(
+                TASK_SCREEN_STRINGS.addTask.alerts.aiGenerateTitle,
+                TASK_SCREEN_STRINGS.addTask.alerts.aiGenerateMessage
+            );
             return;
         }
-        Alert.alert('AI Generate', '這裡未來會呼叫後端 API，根據標題自動生成 Subtasks。');
+        Alert.alert(
+            TASK_SCREEN_STRINGS.addTask.alerts.aiGenerateAlertTitle,
+            TASK_SCREEN_STRINGS.addTask.alerts.aiGeneratePlaceholder
+        );
     };
 
     // --- Tag 邏輯 ---
@@ -302,7 +309,10 @@ export default function AddTaskScreen() {
     // --- 送出資料 ---
     const handleSubmit = () => {
         if (!mainTitle.trim()) {
-            Alert.alert('錯誤', '請輸入主任務標題');
+            Alert.alert(
+                TASK_SCREEN_STRINGS.addTask.alerts.errorTitle,
+                TASK_SCREEN_STRINGS.addTask.alerts.errorMessage
+            );
             return;
         }
 
@@ -324,7 +334,7 @@ export default function AddTaskScreen() {
         const subTaskPayloads = subtasks.map(sub => ({
             id: sub.id,
             parentId: mainId,
-            title: sub.title || '未命名子任務',
+            title: sub.title || TASK_SCREEN_STRINGS.addTask.defaultUntitledSubtask,
             description: sub.description,
             category: null,
             estimatedTime: parseInt(sub.estimatedTime) || 0,
@@ -344,9 +354,9 @@ export default function AddTaskScreen() {
             <ScrollView contentContainerStyle={styles.scrollContent}>
 
                 {/* === 主任務 === */}
-                <Text style={styles.sectionTitle}>New Task</Text>
+                <Text style={styles.sectionTitle}>{TASK_SCREEN_STRINGS.addTask.sectionTitle}</Text>
 
-                <Text style={styles.label}>Category</Text>
+                <Text style={styles.label}>{TASK_SCREEN_STRINGS.addTask.categoryLabel}</Text>
                 <View 
                     onLayout={handleCategoryContainerLayout}
                     style={styles.categoryContainer}
@@ -374,7 +384,7 @@ export default function AddTaskScreen() {
                                     setShowAddCategory(false);
                                     setNewCategoryName('');
                                 },
-                                placeholder: "New category...",
+                                placeholder: TASK_SCREEN_STRINGS.addTask.newCategoryPlaceholder,
                             }}
                         />
                     ) : (
@@ -394,7 +404,7 @@ export default function AddTaskScreen() {
                                     <View style={styles.newPlaceInputContainer}>
                                         <TextInput
                                             style={styles.newPlaceInput}
-                                            placeholder="New category..."
+                                            placeholder={TASK_SCREEN_STRINGS.addTask.newCategoryPlaceholder}
                                             value={newCategoryName}
                                             onChangeText={setNewCategoryName}
                                             autoFocus
@@ -432,14 +442,14 @@ export default function AddTaskScreen() {
 
                 <TextInput
                     style={styles.mainInput}
-                    placeholder="任務標題"
+                    placeholder={TASK_SCREEN_STRINGS.addTask.taskTitlePlaceholder}
                     value={mainTitle}
                     onChangeText={setMainTitle}
                 />
 
                 <View style={styles.rowInput}>
                     <View style={styles.timeContainer}>
-                        <Text style={styles.label}>Time (min)</Text>
+                        <Text style={styles.label}>{TASK_SCREEN_STRINGS.addTask.timeLabel}</Text>
                         <View style={[styles.timeBox, isTimeReadOnly && styles.timeBoxDisabled]}>
                             <TextInput
                                 style={[styles.timeInput, isTimeReadOnly && { color: '#888' }]}
@@ -447,12 +457,12 @@ export default function AddTaskScreen() {
                                 value={isTimeReadOnly ? calculatedTotalTime : mainTime}
                                 onChangeText={setMainTime}
                                 editable={!isTimeReadOnly}
-                                placeholder="0"
+                                placeholder={TASK_SCREEN_STRINGS.addTask.timePlaceholder}
                             />
                         </View>
                     </View>
                     <View style={styles.tagsContainer}>
-                        <Text style={styles.label}>Tags</Text>
+                        <Text style={styles.label}>{TASK_SCREEN_STRINGS.addTask.tagsLabel}</Text>
                         <View style={{ marginTop: 8 }}>
                             <TagDisplayRow tags={mainTags} onEdit={() => openTagModal('main')} tagGroupColors={tagGroupColors} />
                         </View>
@@ -461,7 +471,7 @@ export default function AddTaskScreen() {
 
                 <TextInput
                     style={[styles.input, styles.textArea]}
-                    placeholder="描述 (選填)..."
+                    placeholder={TASK_SCREEN_STRINGS.addTask.descriptionPlaceholder}
                     value={mainDesc}
                     onChangeText={setMainDesc}
                     multiline
@@ -469,17 +479,17 @@ export default function AddTaskScreen() {
 
                 {/* === 子任務 Header 區域 (包含新按鈕) === */}
                 <View style={styles.subtaskHeader}>
-                    <Text style={styles.sectionTitle}>Subtasks</Text>
+                    <Text style={styles.sectionTitle}>{TASK_SCREEN_STRINGS.addTask.subtasksSectionTitle}</Text>
 
                     <View style={styles.headerActions}>
                         {/* --- AI Generate 按鈕 --- */}
                         <TouchableOpacity style={styles.aiButton} onPress={handleAIGenerate}>
                             <Ionicons name="sparkles" size={16} color="#fff" style={{ marginRight: 4 }} />
-                            <Text style={styles.aiButtonText}>AI Generate</Text>
+                            <Text style={styles.aiButtonText}>{TASK_SCREEN_STRINGS.addTask.aiGenerateButton}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity onPress={addSubtask} style={styles.addSubtaskButton}>
-                            <Text style={styles.addLink}>+ Add Subtask</Text>
+                            <Text style={styles.addLink}>{TASK_SCREEN_STRINGS.addTask.addSubtaskButton}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -491,14 +501,14 @@ export default function AddTaskScreen() {
                             <View style={styles.stRowTop}>
                                 <TextInput
                                     style={styles.stTitleInput}
-                                    placeholder={`子任務 ${index + 1}`}
+                                    placeholder={TASK_SCREEN_STRINGS.addTask.getSubtaskTitlePlaceholder(index + 1)}
                                     value={sub.title}
                                     onChangeText={(text) => updateSubtask(sub.id, 'title', text)}
                                 />
                                 <View style={styles.stTimeContainer}>
                                     <TextInput
                                         style={styles.stTimeInput}
-                                        placeholder="Min"
+                                        placeholder={TASK_SCREEN_STRINGS.addTask.minPlaceholder}
                                         keyboardType="numeric"
                                         value={sub.estimatedTime}
                                         onChangeText={(text) => updateSubtask(sub.id, 'estimatedTime', text)}
@@ -512,7 +522,7 @@ export default function AddTaskScreen() {
                             {/* Row 2: Description */}
                             <TextInput
                                 style={styles.stDescInput}
-                                placeholder="新增子任務描述..."
+                                placeholder={TASK_SCREEN_STRINGS.addTask.subtaskDescriptionPlaceholder}
                                 value={sub.description}
                                 onChangeText={(text) => updateSubtask(sub.id, 'description', text)}
                             />
@@ -530,7 +540,7 @@ export default function AddTaskScreen() {
             {/* Footer */}
             <View style={styles.footer}>
                 <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
-                    <Text style={styles.submitBtnText}>Create Task</Text>
+                    <Text style={styles.submitBtnText}>{TASK_SCREEN_STRINGS.addTask.createTaskButton}</Text>
                 </TouchableOpacity>
             </View>
             {/* Tag Selection Modal */}
@@ -538,7 +548,7 @@ export default function AddTaskScreen() {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalCard}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Select Tags</Text>
+                            <Text style={styles.modalTitle}>{TASK_SCREEN_STRINGS.addTask.selectTagsTitle}</Text>
                             <TouchableOpacity onPress={() => setEditingTarget(null)}>
                                 <Ionicons name="close" size={24} color="#333" />
                             </TouchableOpacity>
@@ -597,7 +607,7 @@ export default function AddTaskScreen() {
                             <View style={styles.newPlaceInputContainer}>
                                 <TextInput
                                     style={styles.newPlaceInput}
-                                    placeholder="New tag..."
+                                    placeholder={TASK_SCREEN_STRINGS.addTask.newTagPlaceholder}
                                     value={newTagInGroupName}
                                     onChangeText={setNewTagInGroupName}
                                     autoFocus
@@ -638,7 +648,7 @@ export default function AddTaskScreen() {
         <View style={styles.newPlaceInputContainer}>
             <TextInput
                 style={styles.newPlaceInput}
-                placeholder="New tag group name..."
+                placeholder={TASK_SCREEN_STRINGS.addTask.newTagGroupPlaceholder}
                 value={newTagGroupName}
                 onChangeText={setNewTagGroupName}
                 autoFocus
@@ -674,7 +684,7 @@ export default function AddTaskScreen() {
 
 
                         <TouchableOpacity style={styles.modalSaveBtn} onPress={saveTags}>
-                            <Text style={styles.submitBtnText}>Confirm</Text>
+                            <Text style={styles.submitBtnText}>{TASK_SCREEN_STRINGS.addTask.confirmButton}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
