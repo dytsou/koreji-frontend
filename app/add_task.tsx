@@ -423,29 +423,37 @@ export default function AddTaskScreen() {
                     </View>
 
                     {/* Row 2: Time and Deadline */}
-                    <View style={styles.timeDeadlineRow}>
-                        <View style={[styles.stTimeContainer, isTimeReadOnly && styles.timeBoxDisabled]}>
-                            <TextInput
-                                style={[styles.stTimeInput, isTimeReadOnly && { color: '#888' }]}
-                                keyboardType="numeric"
-                                value={isTimeReadOnly ? calculatedTotalTime : mainTime}
-                                onChangeText={setMainTime}
-                                editable={!isTimeReadOnly}
-                                placeholder={TASK_SCREEN_STRINGS.addTask.minPlaceholder}
-                            />
+                    <View style={styles.timeDeadlineSection}>
+                        <View style={styles.timeDeadlineRow}>
+                            <View style={styles.timeFieldContainer}>
+                                <Text style={styles.fieldLabel}>{TASK_SCREEN_STRINGS.addTask.timeLabel}</Text>
+                                <View style={[styles.stTimeContainer, isTimeReadOnly && styles.timeBoxDisabled]}>
+                                    <TextInput
+                                        style={[styles.stTimeInput, isTimeReadOnly && { color: '#888' }]}
+                                        keyboardType="numeric"
+                                        value={isTimeReadOnly ? calculatedTotalTime : mainTime}
+                                        onChangeText={setMainTime}
+                                        editable={!isTimeReadOnly}
+                                        placeholder={TASK_SCREEN_STRINGS.addTask.minPlaceholder}
+                                    />
+                                </View>
+                            </View>
+                            <View style={styles.deadlineFieldContainer}>
+                                <Text style={styles.fieldLabel}>{TASK_SCREEN_STRINGS.addTask.deadlineLabel}</Text>
+                                <TouchableOpacity 
+                                    style={styles.deadlineContainer}
+                                    onPress={() => {
+                                        console.log('[DEBUG] Deadline button pressed. Current deadline:', mainDeadline?.toISOString());
+                                        setShowDatePicker(true);
+                                    }}
+                                >
+                                    <Text style={[styles.deadlineInput, !mainDeadline && styles.deadlinePlaceholder]}>
+                                        {mainDeadline ? formatDate(mainDeadline) : TASK_SCREEN_STRINGS.addTask.deadlinePlaceholder}
+                                    </Text>
+                                    <Ionicons name="calendar-outline" size={16} color="#666" style={{ marginLeft: 4 }} />
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                        <TouchableOpacity 
-                            style={styles.deadlineContainer}
-                            onPress={() => {
-                                console.log('[DEBUG] Deadline button pressed. Current deadline:', mainDeadline?.toISOString());
-                                setShowDatePicker(true);
-                            }}
-                        >
-                            <Text style={[styles.deadlineInput, !mainDeadline && styles.deadlinePlaceholder]}>
-                                {mainDeadline ? formatDate(mainDeadline) : TASK_SCREEN_STRINGS.addTask.deadlinePlaceholder}
-                            </Text>
-                            <Ionicons name="calendar-outline" size={16} color="#666" style={{ marginLeft: 4 }} />
-                        </TouchableOpacity>
                     </View>
 
                     {/* Row 2: Description */}
@@ -561,39 +569,41 @@ export default function AddTaskScreen() {
                                         </View>
                                         <View style={styles.webDateInputContainer}>
                                             <Text style={styles.webDateLabel}>Select Deadline:</Text>
-                                            {Platform.OS === 'web' ? (
-                                                // @ts-ignore - web only
-                                                <input
-                                                    type="date"
-                                                    style={styles.webDateInputNative}
-                                                    value={mainDeadline ? formatDate(mainDeadline) : ''}
-                                                    min={new Date().toISOString().split('T')[0]}
-                                                    onChange={(e) => {
-                                                        console.log('[DEBUG] Web date input changed:', e.target.value);
-                                                        if (e.target.value) {
-                                                            const date = new Date(e.target.value + 'T00:00:00');
-                                                            if (!isNaN(date.getTime())) {
-                                                                setMainDeadline(date);
+                                            <View style={styles.webDateInputWrapper}>
+                                                {Platform.OS === 'web' ? (
+                                                    // @ts-ignore - web only
+                                                    <input
+                                                        type="date"
+                                                        style={styles.webDateInputNative}
+                                                        value={mainDeadline ? formatDate(mainDeadline) : ''}
+                                                        min={new Date().toISOString().split('T')[0]}
+                                                        onChange={(e) => {
+                                                            console.log('[DEBUG] Web date input changed:', e.target.value);
+                                                            if (e.target.value) {
+                                                                const date = new Date(e.target.value + 'T00:00:00');
+                                                                if (!isNaN(date.getTime())) {
+                                                                    setMainDeadline(date);
+                                                                }
                                                             }
-                                                        }
-                                                    }}
-                                                />
-                                            ) : (
-                                                <TextInput
-                                                    style={styles.webDateInput}
-                                                    value={mainDeadline ? formatDate(mainDeadline) : ''}
-                                                    placeholder="YYYY-MM-DD"
-                                                    onChangeText={(text) => {
-                                                        console.log('[DEBUG] Date input changed:', text);
-                                                        if (text) {
-                                                            const date = new Date(text + 'T00:00:00');
-                                                            if (!isNaN(date.getTime())) {
-                                                                setMainDeadline(date);
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <TextInput
+                                                        style={styles.webDateInput}
+                                                        value={mainDeadline ? formatDate(mainDeadline) : ''}
+                                                        placeholder="YYYY-MM-DD"
+                                                        onChangeText={(text) => {
+                                                            console.log('[DEBUG] Date input changed:', text);
+                                                            if (text) {
+                                                                const date = new Date(text + 'T00:00:00');
+                                                                if (!isNaN(date.getTime())) {
+                                                                    setMainDeadline(date);
+                                                                }
                                                             }
-                                                        }
-                                                    }}
-                                                />
-                                            )}
+                                                        }}
+                                                    />
+                                                )}
+                                            </View>
                                         </View>
                                     </View>
                                 </TouchableOpacity>
@@ -619,13 +629,16 @@ export default function AddTaskScreen() {
                                                 <Text style={styles.datePickerDone}>Done</Text>
                                             </TouchableOpacity>
                                         </View>
-                                        <DateTimePicker
-                                            value={mainDeadline || new Date()}
-                                            mode="date"
-                                            display="spinner"
-                                            onChange={handleDateChange}
-                                            minimumDate={new Date()}
-                                        />
+                                        <View style={styles.datePickerWrapper}>
+                                            <DateTimePicker
+                                                value={mainDeadline || new Date()}
+                                                mode="date"
+                                                display="spinner"
+                                                onChange={handleDateChange}
+                                                minimumDate={new Date()}
+                                                style={styles.datePickerComponent}
+                                            />
+                                        </View>
                                     </View>
                                 </TouchableOpacity>
                             </TouchableOpacity>
@@ -880,8 +893,12 @@ const styles = StyleSheet.create({
     stRowTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
     stTitleInput: { flex: 1, fontSize: 16, fontWeight: '500', color: '#333', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 4 },
     mainTaskTitleInput: { flex: 1, fontSize: 20, fontWeight: '600', color: '#333', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 4 },
-    timeDeadlineRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-    stTimeContainer: { width: 60, borderWidth: 1, borderColor: '#ddd', borderRadius: 6, backgroundColor: '#fafafa', paddingVertical: 2 },
+    timeDeadlineSection: { marginBottom: 8 },
+    timeDeadlineRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' },
+    timeFieldContainer: { flex: 1, minWidth: 120 },
+    deadlineFieldContainer: { flex: 1, minWidth: 120 },
+    fieldLabel: { fontSize: 13, fontWeight: '600', color: '#888', marginBottom: 6 },
+    stTimeContainer: { width: '100%', borderWidth: 1, borderColor: '#ddd', borderRadius: 6, backgroundColor: '#fafafa', paddingVertical: 2 },
     stTimeInput: { textAlign: 'center', fontSize: 14, color: '#333' },
     deadlineContainer: { 
         flex: 1, 
@@ -924,6 +941,8 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         padding: 20,
         width: '100%',
+        maxWidth: '90%',
+        overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
@@ -935,6 +954,15 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 16,
         alignItems: 'center',
+    },
+    datePickerWrapper: {
+        width: '100%',
+        overflow: 'hidden',
+        alignItems: 'center',
+    },
+    datePickerComponent: {
+        width: '100%',
+        maxWidth: '100%',
     },
     datePickerCancel: {
         color: '#666',
@@ -948,6 +976,11 @@ const styles = StyleSheet.create({
     webDateInputContainer: {
         paddingVertical: 8,
         gap: 8,
+        width: '100%',
+    },
+    webDateInputWrapper: {
+        width: '100%',
+        overflow: 'hidden',
     },
     webDateLabel: {
         fontSize: 14,
@@ -972,8 +1005,10 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         backgroundColor: '#fff',
         color: '#333',
-        width: '80%',
+        width: '100%',
+        maxWidth: '100%',
         fontFamily: 'inherit',
+        boxSizing: 'border-box',
     },
     deleteBtn: { padding: 4, backgroundColor: '#f0f0f0', borderRadius: 12 },
 
