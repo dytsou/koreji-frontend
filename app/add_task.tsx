@@ -353,9 +353,6 @@ export default function AddTaskScreen() {
         <View style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
 
-                {/* === 主任務 === */}
-                <Text style={styles.sectionTitle}>{TASK_SCREEN_STRINGS.addTask.sectionTitle}</Text>
-
                 <Text style={styles.label}>{TASK_SCREEN_STRINGS.addTask.categoryLabel}</Text>
                 <View 
                     onLayout={handleCategoryContainerLayout}

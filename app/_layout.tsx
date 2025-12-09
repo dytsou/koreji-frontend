@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { appendBaseUrl } from 'expo-router/build/fork/getPathFromState-forks';
 import TasksScreen from './(tabs)/tasks';
+import { TASK_SCREEN_STRINGS } from '@/constants/strings/tasks';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -24,7 +25,7 @@ export default function RootLayout() {
           name="add_task"
           options={{
             presentation: 'modal',
-            title: '新增任務',
+            title: TASK_SCREEN_STRINGS.addTask.sectionTitle,
             headerShown: true
           }}
         />
