@@ -4,7 +4,9 @@ import { useRouter } from 'expo-router';
 import { type TaskTags } from '@/components/ui/tag-display-row';
 import { TASK_SCREEN_STRINGS } from '@/constants/strings/tasks';
 import { TAG_GROUPS, DEFAULT_TAG_GROUP_ORDER, TAG_GROUP_COLORS, DEFAULT_CATEGORIES } from '@/constants/task-tags';
+import { DEFAULT_TASK_STATUS } from '@/constants/task-status';
 import { type LocalSubTask } from '@/types/add-task';
+import { type TaskStatus } from '@/types/task-status';
 import { formatDate } from '@/utils/date-formatters';
 import { MainTaskCard } from '@/components/add-task/main-task-card';
 import { SubtaskCard } from '@/components/add-task/subtask-card';
@@ -21,6 +23,7 @@ export default function AddTaskScreen() {
   const [mainDesc, setMainDesc] = useState('');
   const [mainTime, setMainTime] = useState('');
   const [mainDeadline, setMainDeadline] = useState<Date | null>(null);
+  const [mainStatus, setMainStatus] = useState<TaskStatus>(DEFAULT_TASK_STATUS);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [mainTags, setMainTags] = useState<TaskTags>({
     tagGroups: {
@@ -312,12 +315,13 @@ export default function AddTaskScreen() {
       description: '',
       estimatedTime: '',
       deadline: null,
+      status: DEFAULT_TASK_STATUS,
       tags: { tagGroups: {} },
     };
     setSubtasks([...subtasks, newSub]);
   };
 
-  const updateSubtask = (id: string, field: keyof LocalSubTask, value: string | Date | null) => {
+  const updateSubtask = (id: string, field: keyof LocalSubTask, value: string | Date | null | TaskStatus) => {
     setSubtasks((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
   };
 
@@ -348,6 +352,7 @@ export default function AddTaskScreen() {
       deadline: mainDeadline ? formatDate(mainDeadline) : null,
       tags: mainTags,
       isCompleted: false,
+      status: mainStatus,
       createdAt,
     };
 
@@ -361,6 +366,7 @@ export default function AddTaskScreen() {
       deadline: sub.deadline ? formatDate(sub.deadline) : null,
       tags: sub.tags,
       isCompleted: false,
+      status: sub.status,
       createdAt,
     }));
 
@@ -378,6 +384,7 @@ export default function AddTaskScreen() {
           description={mainDesc}
           time={mainTime}
           deadline={mainDeadline}
+          status={mainStatus}
           tags={mainTags}
           isTimeReadOnly={isTimeReadOnly}
           calculatedTotalTime={calculatedTotalTime}
@@ -389,6 +396,8 @@ export default function AddTaskScreen() {
           minPlaceholder={TASK_SCREEN_STRINGS.addTask.minPlaceholder}
           deadlinePlaceholder={TASK_SCREEN_STRINGS.addTask.deadlinePlaceholder}
           tagsLabel={TASK_SCREEN_STRINGS.addTask.tagsLabel}
+          statusLabel={TASK_SCREEN_STRINGS.addTask.statusLabel}
+          statusPlaceholder={TASK_SCREEN_STRINGS.addTask.statusPlaceholder}
           onTitleChange={setMainTitle}
           onDescriptionChange={setMainDesc}
           onTimeChange={setMainTime}
@@ -396,6 +405,7 @@ export default function AddTaskScreen() {
             console.log('[DEBUG] Deadline button pressed. Current deadline:', mainDeadline?.toISOString());
             setShowDatePicker(true);
           }}
+          onStatusChange={(status) => setMainStatus(status as TaskStatus)}
           onTagsEdit={() => openTagModal('main')}
         />
 
@@ -423,6 +433,8 @@ export default function AddTaskScreen() {
               subtaskTitlePlaceholder={TASK_SCREEN_STRINGS.addTask.getSubtaskTitlePlaceholder(index + 1)}
               subtaskDescriptionPlaceholder={TASK_SCREEN_STRINGS.addTask.subtaskDescriptionPlaceholder}
               subtaskTagsLabel={TASK_SCREEN_STRINGS.addTask.subtaskTagsLabel}
+              statusLabel={TASK_SCREEN_STRINGS.addTask.statusLabel}
+              statusPlaceholder={TASK_SCREEN_STRINGS.addTask.statusPlaceholder}
               onUpdate={updateSubtask}
               onRemove={removeSubtask}
               onDeadlinePress={(id) => {
