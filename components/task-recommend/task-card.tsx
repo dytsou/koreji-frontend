@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { TaskStatus, TASK_STATUS_COLORS } from '@/constants/task-status';
+import { type TaskStatus } from '@/types/task-status';
+import { TASK_STATUS_COLORS } from '@/constants/task-status';
 
 export interface Task {
   id: string;
@@ -19,22 +20,8 @@ interface TaskCardProps {
   onPress?: () => void;
 }
 
-// Helper function to get status colors
-const getStatusColors = (status: TaskStatus) => {
-  switch (status) {
-    case TaskStatus.NOT_STARTED:
-      return TASK_STATUS_COLORS.NOT_STARTED;
-    case TaskStatus.IN_PROGRESS:
-      return TASK_STATUS_COLORS.IN_PROGRESS;
-    case TaskStatus.DONE:
-      return TASK_STATUS_COLORS.DONE;
-    default:
-      return TASK_STATUS_COLORS.NOT_STARTED;
-  }
-};
-
 export function TaskCard({ task, width, isLastInRow, isRecommended, isSelected, onPress }: TaskCardProps) {
-  const statusColors = getStatusColors(task.status);
+  const statusColors = TASK_STATUS_COLORS[task.status];
 
   return (
     <TouchableOpacity
@@ -67,7 +54,7 @@ export function TaskCard({ task, width, isLastInRow, isRecommended, isSelected, 
 
       {/* Bottom: Status Badge */}
       <View style={styles.taskBadgeContainer}>
-        <View style={[styles.statusBadge, { backgroundColor: statusColors.background }]}>
+        <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
           <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
             {task.status}
           </Text>

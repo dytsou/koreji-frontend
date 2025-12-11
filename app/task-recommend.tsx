@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ScrollView, View, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TaskStatus } from '@/constants/task-status';
+import { type TaskStatus } from '@/types/task-status';
 import { Task } from '@/components/task-recommend/task-card';
 import { TaskList } from '@/components/task-recommend/task-list';
 import { TaskRecommendHeader } from '@/components/task-recommend/task-recommend-header';
@@ -14,28 +14,28 @@ const DUMMY_TASKS: Task[] = [
     title: 'Organize Page Structure',
     duration: 10,
     source: 'Design System',
-    status: TaskStatus.IN_PROGRESS,
+    status: 'In progress',
   },
   {
     id: '2',
     title: 'Lo-Fi to Hi-Fi',
     duration: 15,
     source: 'Design System',
-    status: TaskStatus.NOT_STARTED,
+    status: 'Not started',
   },
   {
     id: '3',
     title: 'Build Basic Component',
     duration: 20,
     source: 'Design System',
-    status: TaskStatus.NOT_STARTED,
+    status: 'Not started',
   },
   {
     id: '4',
     title: 'Create User Authentication Flow',
     duration: 25,
     source: 'Backend API',
-    status: TaskStatus.NOT_STARTED,
+    status: 'Not started',
   },
 ];
 
