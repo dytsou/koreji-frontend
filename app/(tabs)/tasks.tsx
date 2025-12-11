@@ -148,12 +148,26 @@ export default function TasksScreen() {
 
   // 2. Function to update task data (simulate DB Update)
   const updateTaskField = (id: string, field: keyof TaskItem, value: any) => {
-    setTasks(prevTasks => prevTasks.map(t => {
-      if (t.id === id) {
-        return { ...t, [field]: value };
-      }
-      return t;
-    }));
+    setTasks(prevTasks => {
+      const targetTask = prevTasks.find(t => t.id === id);
+      if (!targetTask) return prevTasks;
+
+      const parentId = targetTask.parentId;
+      const parentTask = parentId ? prevTasks.find(t => t.id === parentId) : null;
+
+      // Update the target task first
+      const updatedTasks = prevTasks.map(t => (t.id === id ? { ...t, [field]: value } : t));
+
+      const shouldBumpParent =
+        field === 'status' &&
+        value === 'In progress' &&
+        parentId &&
+        parentTask?.status === 'Not started';
+
+      if (!shouldBumpParent) return updatedTasks;
+
+      return updatedTasks.map(t => (t.id === parentId ? { ...t, status: 'In progress' } : t));
+    });
     console.log(`[DB Update] Task ${id}: ${field} = ${value}`);
   };
 
