@@ -16,8 +16,7 @@ const getSubtaskPadding = (responsive: ReturnType<typeof useResponsive>) => {
   return STYLE_CONSTANTS.subtaskPadding.desktop;
 };
 
-const getCheckboxColor = (isCompleted: boolean) =>
-  isCompleted ? STYLE_CONSTANTS.checkboxColors.checked : STYLE_CONSTANTS.checkboxColors.unchecked;
+const isStatusComplete = (status: TaskStatus) => status === 'Done' || status === 'Archive';
 
 // --- Task Item Type ---
 interface TaskItem {
@@ -205,7 +204,13 @@ export default function TasksScreen() {
     // Progress calculation
     const totalSub = item.subtasks.length;
     const completedSub = item.subtasks.filter(s => s.isCompleted).length;
-    const progressPercent = totalSub > 0 ? (completedSub / totalSub) * 100 : (item.isCompleted ? 100 : 0);
+    const hasProgressFromSubtasks = totalSub > 0;
+    const progressPercent = hasProgressFromSubtasks
+      ? (completedSub / totalSub) * 100
+      : isStatusComplete(item.status) || item.isCompleted
+      ? 100
+      : 0;
+    const shouldShowProgress = hasProgressFromSubtasks || isStatusComplete(item.status);
 
     return (
       <View style={styles.card}>
@@ -270,7 +275,7 @@ export default function TasksScreen() {
 
 
           {/* When there are subtasks, show: progress bar + total time (read-only) */}
-          {hasSubtasks && (
+          {shouldShowProgress && (
             <View style={styles.progressRow}>
               <View style={styles.progressContainer}>
                 <View style={styles.progressBarBg}>
@@ -299,22 +304,23 @@ export default function TasksScreen() {
               return (
               <View key={sub.id} style={[styles.subtaskContainer, { paddingHorizontal: subtaskPaddingH, paddingVertical: subtaskPaddingV }]}>
                 <View style={styles.subtaskRow}>
-                  {/* Complete checkbox */}
-                  <TouchableOpacity onPress={() => updateTaskField(sub.id, 'isCompleted', !sub.isCompleted)}>
-                    <Ionicons
-                      name={sub.isCompleted ? "checkbox" : "square-outline"}
-                      size={24}
-                      color={getCheckboxColor(sub.isCompleted)}
-                    />
-                  </TouchableOpacity>
-
                   <View style={styles.subtaskContent}>
+                    <View style={styles.subtaskHeaderRow}>
+                      {/* Subtask Status (replaces checkbox) */}
+                      {renderStatusBadge(sub.status, () => {
+                        setStatusPickerTaskId(sub.id);
+                        setStatusPickerVisible(sub.id);
+                      })}
+
+                      {/* Subtask title (editable) */}
+                      <EditableField
+                        value={sub.title}
+                        textStyle={[styles.subtaskText, sub.isCompleted && styles.completedText]}
+                        onSave={(val) => updateTaskField(sub.id, 'title', val)}
+                      />
+                    </View>
+
                     {/* Subtask title (editable) */}
-                    <EditableField
-                      value={sub.title}
-                      textStyle={[styles.subtaskText, sub.isCompleted && styles.completedText]}
-                      onSave={(val) => updateTaskField(sub.id, 'title', val)}
-                    />
                     {/* Subtask description (editable) */}
                     <EditableField
                       value={sub.description}
@@ -322,27 +328,26 @@ export default function TasksScreen() {
                       textStyle={styles.subtaskDesc}
                       onSave={(val) => updateTaskField(sub.id, 'description', val)}
                     />
-                  </View>
-                </View>
 
-                {/* Subtask Meta */}
-                <View style={styles.tagsRow}>
-                  <Text style={styles.clockIcon}>⏱</Text>
-                  {/* Subtask time (editable) */}
-                  <EditableField
-                    value={sub.estimatedTime.toString()}
-                    isNumeric
-                    textStyle={styles.tagTime}
-                    containerStyle={styles.timeTagContainer}
-                    onSave={(val) => updateTaskField(sub.id, 'estimatedTime', parseInt(val) || 0)}
-                  />
-                  <Text style={styles.tagUnit}>{TASK_SCREEN_STRINGS.tasksList.timeUnit}</Text>
-                  <TagsDisplay tags={sub.tags} />
-                  {/* Subtask Status Badge */}
-                  {renderStatusBadge(sub.status, () => {
-                    setStatusPickerTaskId(sub.id);
-                    setStatusPickerVisible(sub.id);
-                  })}
+                    {/* Subtask Meta */}
+                    <View style={styles.subtaskMetaContainer}>
+                      <View style={[styles.tagsRow, styles.subtaskTagsRow]}>
+                        <TagsDisplay tags={sub.tags} />
+                      </View>
+                      <View style={[styles.subtaskTimeRow]}>
+                        <Text style={styles.clockIcon}>⏱</Text>
+                        {/* Subtask time (editable) */}
+                        <EditableField
+                          value={sub.estimatedTime.toString()}
+                          isNumeric
+                          textStyle={styles.tagTime}
+                          containerStyle={styles.timeTagContainer}
+                          onSave={(val) => updateTaskField(sub.id, 'estimatedTime', parseInt(val) || 0)}
+                        />
+                        <Text style={styles.tagUnit}>{TASK_SCREEN_STRINGS.tasksList.timeUnit}</Text>
+                      </View>
+                    </View>
+                  </View>
                 </View>
               </View>
               );
@@ -487,13 +492,18 @@ const styles = StyleSheet.create({
   subtaskList: { backgroundColor: '#FAFAFA', borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingVertical: 4 },
   subtaskContainer: { borderBottomWidth: 1, borderBottomColor: '#eee' },
   subtaskRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
-  subtaskContent: { flex: 1, marginLeft: 8 },
-  subtaskText: { fontSize: 15, color: '#333', fontWeight: '500' },
+  subtaskContent: { flex: 1, marginLeft: 0 },
+  subtaskHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  subtaskText: { fontSize: 15, color: '#333', fontWeight: '500', flex: 1 },
   subtaskDesc: { fontSize: 13, color: '#999', marginTop: 2 },
   completedText: { textDecorationLine: 'line-through', color: '#aaa' },
+  subtaskMetaRow: { marginTop: 8 },
+  subtaskMetaContainer: { marginTop: 6, gap: 6 },
+  subtaskTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
 
   // Tags & Time Editing
-  tagsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 },
+  tagsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 6, flexWrap: 'wrap', marginTop: 4 },
+  subtaskTagsRow: { marginTop: 8 },
   timeTagContainer: { borderBottomWidth: 1, borderBottomColor: '#ccc' },
   tagTime: { fontSize: 13, color: '#333', fontWeight: '600', textAlign: 'center', minWidth: 20 },
   tagUnit: { fontSize: 12, color: '#888', marginRight: 4 },
