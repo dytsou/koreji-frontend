@@ -8,6 +8,9 @@ import { useResponsive } from '@/hooks/use-responsive';
 import { TASK_SCREEN_STRINGS } from '@/constants/strings/tasks';
 import { TASK_STATUSES, TASK_STATUS_COLORS } from '@/constants/task-status';
 import { STYLE_CONSTANTS } from '@/constants/ui';
+import { TagSelectionModal } from '@/components/add-task/tag-selection-modal';
+import { type TaskTags } from '@/components/ui/tag-display-row';
+import { DEFAULT_TAG_GROUP_ORDER, TAG_GROUPS, TAG_GROUP_COLORS } from '@/constants/task-tags';
 import { type TaskStatus } from '@/types/task-status';
 
 const getSubtaskPadding = (responsive: ReturnType<typeof useResponsive>) => {
@@ -145,6 +148,20 @@ export default function TasksScreen() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [statusPickerVisible, setStatusPickerVisible] = useState<string | null>(null);
   const [statusPickerTaskId, setStatusPickerTaskId] = useState<string | null>(null);
+  const [editingTagTarget, setEditingTagTarget] = useState<'main' | string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [tempTags, setTempTags] = useState<TaskTags>({ tagGroups: {} });
+  const [tagGroups, setTagGroups] = useState<{ [groupName: string]: string[] }>(
+    Object.fromEntries(Object.entries(TAG_GROUPS).map(([name, data]) => [name, data.tags]))
+  );
+  const [tagGroupOrder, setTagGroupOrder] = useState<string[]>(DEFAULT_TAG_GROUP_ORDER);
+  const [tagGroupColors, setTagGroupColors] = useState<{ [groupName: string]: { bg: string; text: string } }>(
+    Object.fromEntries(Object.entries(TAG_GROUPS).map(([name, data]) => [name, data.color]))
+  );
+  const [showTagGroupInput, setShowTagGroupInput] = useState(false);
+  const [newTagGroupName, setNewTagGroupName] = useState('');
+  const [editingTagInGroup, setEditingTagInGroup] = useState<{ groupName: string } | null>(null);
+  const [newTagInGroupName, setNewTagInGroupName] = useState('');
 
   // 2. Function to update task data (simulate DB Update)
   const updateTaskField = (id: string, field: keyof TaskItem, value: any) => {
@@ -186,6 +203,195 @@ export default function TasksScreen() {
       return nextTasks;
     });
     console.log(`[DB Update] Task ${id}: ${field} = ${value}`);
+  };
+
+  // --- Tag helpers ---
+  const buildTaskTagsFromTask = (task: TaskItem): TaskTags => {
+    const groupTags: { [groupName: string]: string[] } = {};
+    if (task.category) groupTags.Category = [task.category];
+    if (task.tags.priority) groupTags.Priority = [task.tags.priority];
+    if (task.tags.attention) groupTags.Attention = [task.tags.attention];
+    if (task.tags.tools?.length) groupTags.Tools = task.tags.tools;
+    if (task.tags.place) groupTags.Place = [task.tags.place];
+    return { tagGroups: groupTags };
+  };
+
+  const buildTaskFieldsFromSelection = (selection: TaskTags, includeCategory: boolean) => {
+    const groups = selection.tagGroups || {};
+    const nextTags = {
+      priority: groups.Priority?.[0],
+      attention: groups.Attention?.[0],
+      tools: groups.Tools || [],
+      place: groups.Place?.[0],
+    };
+    const categoryValue = includeCategory ? groups.Category?.[0] : undefined;
+    return { categoryValue, nextTags };
+  };
+
+  const openTagModalForTask = (taskId: string, isMainTask: boolean) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentTags = buildTaskTagsFromTask(task);
+    if (isMainTask) {
+      setTempTags(currentTags);
+      setEditingTagTarget('main');
+    } else {
+      const { Category, ...rest } = currentTags.tagGroups || {};
+      setTempTags({ tagGroups: rest });
+      setEditingTagTarget(taskId);
+    }
+    setEditingTaskId(taskId);
+    setShowTagGroupInput(false);
+    setNewTagGroupName('');
+    setEditingTagInGroup(null);
+    setNewTagInGroupName('');
+  };
+
+  const toggleTagInGroup = (groupName: string, tag: string) => {
+    const currentTagGroups = tempTags.tagGroups || {};
+    const groupTags = currentTagGroups[groupName] || [];
+    const groupConfig = TAG_GROUPS[groupName] || { isSingleSelect: false, allowAddTags: true };
+
+    let updatedGroupTags: string[];
+    if (groupConfig.isSingleSelect) {
+      updatedGroupTags = groupTags.includes(tag) ? [] : [tag];
+    } else {
+      updatedGroupTags = groupTags.includes(tag) ? groupTags.filter((t) => t !== tag) : [...groupTags, tag];
+    }
+
+    setTempTags({
+      ...tempTags,
+      tagGroups: {
+        ...currentTagGroups,
+        [groupName]: updatedGroupTags,
+      },
+    });
+  };
+
+  const handleAddTagToGroup = (groupName: string) => {
+    setEditingTagInGroup({ groupName });
+  };
+
+  const handleSaveTagToGroup = () => {
+    if (
+      editingTagInGroup &&
+      newTagInGroupName.trim() &&
+      !tagGroups[editingTagInGroup.groupName]?.includes(newTagInGroupName.trim())
+    ) {
+      const trimmedTag = newTagInGroupName.trim();
+      setTagGroups((prev) => ({
+        ...prev,
+        [editingTagInGroup.groupName]: [...(prev[editingTagInGroup.groupName] || []), trimmedTag],
+      }));
+
+      if (editingTagInGroup.groupName === 'Category') {
+        const currentTagGroups = tempTags.tagGroups || {};
+        const groupConfig = TAG_GROUPS['Category'] || { isSingleSelect: true };
+        if (groupConfig.isSingleSelect) {
+          setTempTags({
+            ...tempTags,
+            tagGroups: {
+              ...currentTagGroups,
+              Category: [trimmedTag],
+            },
+          });
+        }
+      }
+    }
+    setEditingTagInGroup(null);
+    setNewTagInGroupName('');
+  };
+
+  const handleAddNewTagGroup = () => {
+    setShowTagGroupInput(true);
+  };
+
+  const handleSaveNewTagGroup = () => {
+    const trimmedTagGroup = newTagGroupName.trim();
+    if (trimmedTagGroup && !tagGroups[trimmedTagGroup]) {
+      setTagGroups((prev) => ({
+        ...prev,
+        [trimmedTagGroup]: [],
+      }));
+      setTagGroupOrder((prev) => [...prev, trimmedTagGroup]);
+
+      const existingGroupNames = Object.keys(tagGroupColors);
+      const usedColorIndices = existingGroupNames
+        .map((name) =>
+          TAG_GROUP_COLORS.findIndex(
+            (c) => c.bg === tagGroupColors[name].bg && c.text === tagGroupColors[name].text
+          )
+        )
+        .filter((idx) => idx !== -1);
+
+      let colorIndex = 0;
+      for (let i = 0; i < TAG_GROUP_COLORS.length; i++) {
+        if (!usedColorIndices.includes(i)) {
+          colorIndex = i;
+          break;
+        }
+      }
+      const selectedColor = TAG_GROUP_COLORS[colorIndex % TAG_GROUP_COLORS.length];
+
+      setTagGroupColors((prev) => ({
+        ...prev,
+        [trimmedTagGroup]: selectedColor,
+      }));
+
+      const currentTagGroups = tempTags.tagGroups || {};
+      setTempTags({
+        ...tempTags,
+        tagGroups: {
+          ...currentTagGroups,
+          [trimmedTagGroup]: [],
+        },
+      });
+    }
+    setShowTagGroupInput(false);
+    setNewTagGroupName('');
+  };
+
+  const saveTagsForTask = () => {
+    if (!editingTaskId) {
+      setEditingTagTarget(null);
+      return;
+    }
+
+    const includeCategory = editingTagTarget === 'main';
+    const selection = includeCategory
+      ? tempTags
+      : (() => {
+          const { Category, ...rest } = tempTags.tagGroups || {};
+          return { tagGroups: rest };
+        })();
+
+    const { categoryValue, nextTags } = buildTaskFieldsFromSelection(selection, includeCategory);
+
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== editingTaskId) return t;
+        const nextTask: TaskItem = {
+          ...t,
+          tags: {
+            ...t.tags,
+            ...nextTags,
+            tools: nextTags.tools || [],
+          },
+        };
+        if (includeCategory) {
+          nextTask.category = categoryValue || t.category;
+        }
+        return nextTask;
+      })
+    );
+
+    setEditingTagTarget(null);
+    setEditingTaskId(null);
+    setShowTagGroupInput(false);
+    setNewTagGroupName('');
+    setEditingTagInGroup(null);
+    setNewTagInGroupName('');
   };
 
   // 3. Convert data structure (Flat -> Tree) and dynamically calculate time
@@ -255,9 +461,15 @@ export default function TasksScreen() {
               setStatusPickerVisible(item.id);
             })}
 
-            <View style={styles.categoryBadge}>
+            <Pressable
+              onPress={() => openTagModalForTask(item.id, true)}
+              style={({ pressed }) => [
+                styles.categoryBadge,
+                pressed && { opacity: 0.75 },
+              ]}
+            >
               <Text style={styles.categoryText}>{item.category || TASK_SCREEN_STRINGS.tasksList.defaultCategory}</Text>
-            </View>
+            </Pressable>
 
             {/* Title (editable) */}
             <View style={styles.titleContainer}>
@@ -286,7 +498,7 @@ export default function TasksScreen() {
 
           {/* Tags */}
           <View style={styles.tagsRow}>
-            <TagsDisplay tags={item.tags} />
+            <TagsDisplay tags={item.tags} onEdit={() => openTagModalForTask(item.id, true)} />
           </View>
 
           {/* Show time for single task (after progress bar, same position as when there are subtasks) */}
@@ -364,7 +576,7 @@ export default function TasksScreen() {
                     {/* Subtask Meta */}
                     <View style={styles.subtaskMetaContainer}>
                       <View style={[styles.tagsRow, styles.subtaskTagsRow]}>
-                        <TagsDisplay tags={sub.tags} />
+                        <TagsDisplay tags={sub.tags} onEdit={() => openTagModalForTask(sub.id, false)} />
                       </View>
                       <View style={[styles.subtaskTimeRow]}>
                         <Text style={styles.clockIcon}>⏱</Text>
@@ -477,18 +689,79 @@ export default function TasksScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Tag Selection Modal (reuse add_task modal) */}
+      <TagSelectionModal
+        visible={!!editingTagTarget}
+        editingTarget={editingTagTarget}
+        tempTags={tempTags}
+        tagGroups={tagGroups}
+        tagGroupOrder={tagGroupOrder}
+        tagGroupColors={tagGroupColors}
+        editingTagInGroup={editingTagInGroup}
+        newTagInGroupName={newTagInGroupName}
+        showTagGroupInput={showTagGroupInput}
+        newTagGroupName={newTagGroupName}
+        selectTagsTitle={TASK_SCREEN_STRINGS.addTask.selectTagsTitle}
+        newTagPlaceholder={TASK_SCREEN_STRINGS.addTask.newTagPlaceholder}
+        newTagGroupPlaceholder={TASK_SCREEN_STRINGS.addTask.newTagGroupPlaceholder}
+        confirmButtonText={TASK_SCREEN_STRINGS.addTask.confirmButton}
+        onClose={() => {
+          setEditingTagTarget(null);
+          setEditingTaskId(null);
+        }}
+        onToggleTag={toggleTagInGroup}
+        onAddTagToGroup={handleAddTagToGroup}
+        onSaveTagToGroup={handleSaveTagToGroup}
+        onCancelTagInGroup={() => {
+          setEditingTagInGroup(null);
+          setNewTagInGroupName('');
+        }}
+        onNewTagInGroupNameChange={setNewTagInGroupName}
+        onAddNewTagGroup={handleAddNewTagGroup}
+        onSaveNewTagGroup={handleSaveNewTagGroup}
+        onCancelTagGroup={() => {
+          setShowTagGroupInput(false);
+          setNewTagGroupName('');
+        }}
+        onNewTagGroupNameChange={setNewTagGroupName}
+        onSave={saveTagsForTask}
+      />
     </SafeAreaView>
   );
 }
 
-// Tag Component (keep the same)
-const TagsDisplay = ({ tags }: { tags: TaskItem['tags'] }) => (
-  <>
-    {tags.place && <View style={[styles.miniTag, { backgroundColor: '#E0F2F1' }]}><Text style={[styles.miniTagText, { color: '#00695C' }]}>{tags.place}</Text></View>}
-    {tags.priority && <View style={[styles.miniTag, { backgroundColor: '#FFF3E0' }]}><Text style={[styles.miniTagText, { color: '#E65100' }]}>{tags.priority}</Text></View>}
-    {tags.attention && <View style={[styles.miniTag, { backgroundColor: '#F3E5F5' }]}><Text style={[styles.miniTagText, { color: '#7B1FA2' }]}>{tags.attention}</Text></View>}
-    {tags.tools.slice(0, 2).map(t => <View key={t} style={[styles.miniTag, { backgroundColor: '#E3F2FD' }]}><Text style={[styles.miniTagText, { color: '#1565C0' }]}>{t}</Text></View>)}
-  </>
+const TagsDisplay = ({ tags, onEdit }: { tags: TaskItem['tags']; onEdit: () => void }) => (
+  <Pressable
+    onPress={onEdit}
+    style={({ pressed }) => [styles.tagsPressable, pressed && { opacity: 0.7 }]}
+  >
+    <View style={styles.tagChipRow}>
+      {tags.place && (
+        <View style={[styles.miniTag, { backgroundColor: '#E0F2F1' }]}>
+          <Text style={[styles.miniTagText, { color: '#00695C' }]}>{tags.place}</Text>
+        </View>
+      )}
+      {tags.priority && (
+        <View style={[styles.miniTag, { backgroundColor: '#FFF3E0' }]}>
+          <Text style={[styles.miniTagText, { color: '#E65100' }]}>{tags.priority}</Text>
+        </View>
+      )}
+      {tags.attention && (
+        <View style={[styles.miniTag, { backgroundColor: '#F3E5F5' }]}>
+          <Text style={[styles.miniTagText, { color: '#7B1FA2' }]}>{tags.attention}</Text>
+        </View>
+      )}
+      {tags.tools.slice(0, 2).map((t) => (
+        <View key={t} style={[styles.miniTag, { backgroundColor: '#E3F2FD' }]}>
+          <Text style={[styles.miniTagText, { color: '#1565C0' }]}>{t}</Text>
+        </View>
+      ))}
+    </View>
+    <View style={styles.editIcon}>
+      <Ionicons name="create-outline" size={14} color="#666" />
+    </View>
+  </Pressable>
 );
 
 const styles = StyleSheet.create({
@@ -535,6 +808,9 @@ const styles = StyleSheet.create({
 
   // Tags & Time Editing
   tagsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 6, flexWrap: 'wrap', marginTop: 4 },
+  tagsPressable: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  tagChipRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 },
+  editIcon: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#f2f2f2', alignItems: 'center', justifyContent: 'center' },
   subtaskTagsRow: { marginTop: 8 },
   timeTagContainer: { borderBottomWidth: 1, borderBottomColor: '#ccc' },
   tagTime: { fontSize: 13, color: '#333', fontWeight: '600', textAlign: 'center', minWidth: 20 },
