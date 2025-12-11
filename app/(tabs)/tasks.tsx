@@ -7,9 +7,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { useResponsive } from '@/hooks/use-responsive';
 import { TASK_SCREEN_STRINGS } from '@/constants/strings/tasks';
 import { TASK_STATUSES, TASK_STATUS_COLORS } from '@/constants/task-status';
+import { STYLE_CONSTANTS } from '@/constants/ui';
+import { TagSelectionModal } from '@/components/add-task/tag-selection-modal';
+import { type TaskTags } from '@/components/ui/tag-display-row';
+import { DEFAULT_TAG_GROUP_ORDER, TAG_GROUPS, TAG_GROUP_COLORS } from '@/constants/task-tags';
 import { type TaskStatus } from '@/types/task-status';
 
-// --- 資料型別 ---
+const getSubtaskPadding = (responsive: ReturnType<typeof useResponsive>) => {
+  if (responsive.isMobile) return STYLE_CONSTANTS.subtaskPadding.mobile;
+  if (responsive.isTablet) return STYLE_CONSTANTS.subtaskPadding.tablet;
+  return STYLE_CONSTANTS.subtaskPadding.desktop;
+};
+
+const isStatusComplete = (status: TaskStatus) => status === 'Done' || status === 'Archive';
+
+// --- Task Item Type ---
 interface TaskItem {
   id: string;
   parentId: string | null;
@@ -27,7 +39,7 @@ interface TaskItem {
   };
 }
 
-// --- 初始假資料 ---
+// --- Initial dummy data ---
 const INITIAL_TASKS: TaskItem[] = [
   
   {
@@ -52,8 +64,8 @@ const INITIAL_TASKS: TaskItem[] = [
   },
 ];
 
-// --- [新組件] 可編輯文字欄位 ---
-// 負責處理顯示文字 vs 輸入框的切換
+// --- [New Component] Editable text field ---
+// Responsible for handling the switch between displayed text and input field
 interface EditableFieldProps {
   value: string;
   isNumeric?: boolean;
@@ -76,7 +88,7 @@ const EditableField = ({
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value);
 
-  // 當外部資料改變時，同步更新內部暫存值
+  // When external data changes, synchronize the internal temporary value
   React.useEffect(() => {
     setTempValue(value);
   }, [value]);
@@ -88,7 +100,7 @@ const EditableField = ({
 
   const handleSubmit = () => {
     setIsEditing(false);
-    // 如果值有變才更新
+    // Update only if the value has changed
     if (tempValue !== value) {
       onSave(tempValue);
     }
@@ -100,11 +112,11 @@ const EditableField = ({
         <TextInput
           value={tempValue}
           onChangeText={setTempValue}
-          onSubmitEditing={handleSubmit} // 按 Enter 觸發
-          onBlur={handleSubmit} // 失去焦點也觸發儲存
+          onSubmitEditing={handleSubmit} // Trigger save when pressing Enter  
+          onBlur={handleSubmit} // Trigger save when losing focus
           autoFocus
           keyboardType={isNumeric ? 'numeric' : 'default'}
-          style={[textStyle, { padding: 0, minWidth: 40 }]} // 保持與原本文字樣式一致
+          style={[textStyle, { padding: 0, minWidth: 40 }]} // Keep the same style as the original text
           returnKeyType="done"
         />
       </View>
@@ -119,7 +131,7 @@ const EditableField = ({
     >
       <Text style={[
         textStyle,
-        isReadOnly && { opacity: 0.6 } // 唯讀時稍微淡一點
+        isReadOnly && { opacity: 0.6 } // When read-only, slightly fade out
       ]}>
         {value || placeholder}
       </Text>
@@ -131,31 +143,280 @@ export default function TasksScreen() {
   const router = useRouter();
   const responsive = useResponsive();
 
-  // 1. 將資料轉為 State，這樣才能修改
+  // 1. Convert data to State, so that it can be modified
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [statusPickerVisible, setStatusPickerVisible] = useState<string | null>(null);
   const [statusPickerTaskId, setStatusPickerTaskId] = useState<string | null>(null);
+  const [editingTagTarget, setEditingTagTarget] = useState<'main' | string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [tempTags, setTempTags] = useState<TaskTags>({ tagGroups: {} });
+  const [tagGroups, setTagGroups] = useState<{ [groupName: string]: string[] }>(
+    Object.fromEntries(Object.entries(TAG_GROUPS).map(([name, data]) => [name, data.tags]))
+  );
+  const [tagGroupOrder, setTagGroupOrder] = useState<string[]>(DEFAULT_TAG_GROUP_ORDER);
+  const [tagGroupColors, setTagGroupColors] = useState<{ [groupName: string]: { bg: string; text: string } }>(
+    Object.fromEntries(Object.entries(TAG_GROUPS).map(([name, data]) => [name, data.color]))
+  );
+  const [showTagGroupInput, setShowTagGroupInput] = useState(false);
+  const [newTagGroupName, setNewTagGroupName] = useState('');
+  const [editingTagInGroup, setEditingTagInGroup] = useState<{ groupName: string } | null>(null);
+  const [newTagInGroupName, setNewTagInGroupName] = useState('');
 
-  // 2. 更新任務資料的函式 (模擬 DB Update)
+  // 2. Function to update task data (simulate DB Update)
   const updateTaskField = (id: string, field: keyof TaskItem, value: any) => {
-    setTasks(prevTasks => prevTasks.map(t => {
-      if (t.id === id) {
-        return { ...t, [field]: value };
+    setTasks(prevTasks => {
+      const targetTask = prevTasks.find(t => t.id === id);
+      if (!targetTask) return prevTasks;
+
+      const parentId = targetTask.parentId;
+      const parentTask = parentId ? prevTasks.find(t => t.id === parentId) : null;
+
+      // Update the target task first
+      let nextTasks = prevTasks.map(t => (t.id === id ? { ...t, [field]: value } : t));
+
+      const shouldBumpParent =
+        field === 'status' &&
+        value === 'In progress' &&
+        parentId &&
+        parentTask?.status === 'Not started';
+
+      if (shouldBumpParent) {
+        nextTasks = nextTasks.map(t => (t.id === parentId ? { ...t, status: 'In progress' } : t));
       }
-      return t;
-    }));
+
+      const shouldCompleteChildren =
+        field === 'status' &&
+        (value === 'Done' || value === 'Archive');
+
+      if (shouldCompleteChildren) {
+        nextTasks = nextTasks.map(t => {
+          const isChild = t.parentId === id;
+          const targetStatus = value;
+          const shouldUpdateChild = targetStatus === 'Archive'
+            ? t.status !== 'Archive' // archive all non-archived children (including Done)
+            : t.status === 'Not started' || t.status === 'In progress'; // only bump incomplete to Done
+          return isChild && shouldUpdateChild ? { ...t, status: targetStatus } : t;
+        });
+      }
+
+      return nextTasks;
+    });
     console.log(`[DB Update] Task ${id}: ${field} = ${value}`);
   };
 
-  // 3. 資料結構轉換 (Flat -> Tree) 並動態計算時間
+  // --- Tag helpers ---
+  const buildTaskTagsFromTask = (task: TaskItem): TaskTags => {
+    const groupTags: { [groupName: string]: string[] } = {};
+    if (task.category) groupTags.Category = [task.category];
+    if (task.tags.priority) groupTags.Priority = [task.tags.priority];
+    if (task.tags.attention) groupTags.Attention = [task.tags.attention];
+    if (task.tags.tools?.length) groupTags.Tools = task.tags.tools;
+    if (task.tags.place) groupTags.Place = [task.tags.place];
+    return { tagGroups: groupTags };
+  };
+
+  const buildTaskFieldsFromSelection = (selection: TaskTags, includeCategory: boolean) => {
+    const groups = selection.tagGroups || {};
+    const nextTags = {
+      priority: groups.Priority?.[0],
+      attention: groups.Attention?.[0],
+      tools: groups.Tools || [],
+      place: groups.Place?.[0],
+    };
+    const categoryValue = includeCategory ? groups.Category?.[0] : undefined;
+    return { categoryValue, nextTags };
+  };
+
+  const openTagModalForTask = (taskId: string, isMainTask: boolean) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentTags = buildTaskTagsFromTask(task);
+    if (isMainTask) {
+      setTempTags(currentTags);
+      setEditingTagTarget('main');
+    } else {
+      const { Category, ...rest } = currentTags.tagGroups || {};
+      setTempTags({ tagGroups: rest });
+      setEditingTagTarget(taskId);
+    }
+    setEditingTaskId(taskId);
+    setShowTagGroupInput(false);
+    setNewTagGroupName('');
+    setEditingTagInGroup(null);
+    setNewTagInGroupName('');
+  };
+
+  const toggleTagInGroup = (groupName: string, tag: string) => {
+    const currentTagGroups = tempTags.tagGroups || {};
+    const groupTags = currentTagGroups[groupName] || [];
+    const groupConfig = TAG_GROUPS[groupName] || { isSingleSelect: false, allowAddTags: true };
+
+    let updatedGroupTags: string[];
+    if (groupConfig.isSingleSelect) {
+      updatedGroupTags = groupTags.includes(tag) ? [] : [tag];
+    } else {
+      updatedGroupTags = groupTags.includes(tag) ? groupTags.filter((t) => t !== tag) : [...groupTags, tag];
+    }
+
+    setTempTags({
+      ...tempTags,
+      tagGroups: {
+        ...currentTagGroups,
+        [groupName]: updatedGroupTags,
+      },
+    });
+  };
+
+  const handleAddTagToGroup = (groupName: string) => {
+    setEditingTagInGroup({ groupName });
+  };
+
+  const handleSaveTagToGroup = () => {
+    if (
+      editingTagInGroup &&
+      newTagInGroupName.trim() &&
+      !tagGroups[editingTagInGroup.groupName]?.includes(newTagInGroupName.trim())
+    ) {
+      const trimmedTag = newTagInGroupName.trim();
+      setTagGroups((prev) => ({
+        ...prev,
+        [editingTagInGroup.groupName]: [...(prev[editingTagInGroup.groupName] || []), trimmedTag],
+      }));
+
+      if (editingTagInGroup.groupName === 'Category') {
+        const currentTagGroups = tempTags.tagGroups || {};
+        const groupConfig = TAG_GROUPS['Category'] || { isSingleSelect: true };
+        if (groupConfig.isSingleSelect) {
+          setTempTags({
+            ...tempTags,
+            tagGroups: {
+              ...currentTagGroups,
+              Category: [trimmedTag],
+            },
+          });
+        }
+      }
+    }
+    setEditingTagInGroup(null);
+    setNewTagInGroupName('');
+  };
+
+  const handleAddNewTagGroup = () => {
+    setShowTagGroupInput(true);
+  };
+
+  const handleSaveNewTagGroup = () => {
+    const trimmedTagGroup = newTagGroupName.trim();
+    if (trimmedTagGroup && !tagGroups[trimmedTagGroup]) {
+      setTagGroups((prev) => ({
+        ...prev,
+        [trimmedTagGroup]: [],
+      }));
+      setTagGroupOrder((prev) => [...prev, trimmedTagGroup]);
+
+      const existingGroupNames = Object.keys(tagGroupColors);
+      const usedColorIndices = existingGroupNames
+        .map((name) =>
+          TAG_GROUP_COLORS.findIndex(
+            (c) => c.bg === tagGroupColors[name].bg && c.text === tagGroupColors[name].text
+          )
+        )
+        .filter((idx) => idx !== -1);
+
+      let colorIndex = 0;
+      for (let i = 0; i < TAG_GROUP_COLORS.length; i++) {
+        if (!usedColorIndices.includes(i)) {
+          colorIndex = i;
+          break;
+        }
+      }
+      const selectedColor = TAG_GROUP_COLORS[colorIndex % TAG_GROUP_COLORS.length];
+
+      setTagGroupColors((prev) => ({
+        ...prev,
+        [trimmedTagGroup]: selectedColor,
+      }));
+
+      const currentTagGroups = tempTags.tagGroups || {};
+      setTempTags({
+        ...tempTags,
+        tagGroups: {
+          ...currentTagGroups,
+          [trimmedTagGroup]: [],
+        },
+      });
+    }
+    setShowTagGroupInput(false);
+    setNewTagGroupName('');
+  };
+
+  const saveTagsForTask = () => {
+    if (!editingTaskId) {
+      setEditingTagTarget(null);
+      return;
+    }
+
+    const includeCategory = editingTagTarget === 'main';
+    const selection = includeCategory
+      ? tempTags
+      : (() => {
+          const { Category, ...rest } = tempTags.tagGroups || {};
+          return { tagGroups: rest };
+        })();
+
+    const { categoryValue, nextTags } = buildTaskFieldsFromSelection(selection, includeCategory);
+
+    const currentTask = tasks.find((t) => t.id === editingTaskId);
+    if (currentTask) {
+      console.log('[Tag Update] Task:', editingTaskId, 'New tags:', selection.tagGroups);
+      if (includeCategory) {
+        console.log(
+          '[Category Update] Task:',
+          editingTaskId,
+          'From:',
+          currentTask.category || '(none)',
+          'To:',
+          categoryValue || currentTask.category || '(none)'
+        );
+      }
+    }
+
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== editingTaskId) return t;
+        const nextTask: TaskItem = {
+          ...t,
+          tags: {
+            ...t.tags,
+            ...nextTags,
+            tools: nextTags.tools || [],
+          },
+        };
+        if (includeCategory) {
+          nextTask.category = categoryValue || t.category;
+        }
+        return nextTask;
+      })
+    );
+
+    setEditingTagTarget(null);
+    setEditingTaskId(null);
+    setShowTagGroupInput(false);
+    setNewTagGroupName('');
+    setEditingTagInGroup(null);
+    setNewTagInGroupName('');
+  };
+
+  // 3. Convert data structure (Flat -> Tree) and dynamically calculate time
   const structuredTasks = useMemo(() => {
     const mainTasks = tasks.filter(t => t.parentId === null);
 
     return mainTasks.map(main => {
       const subtasks = tasks.filter(t => t.parentId === main.id);
 
-      // 動態計算總時間 (如果子任務時間被修改，這裡會自動重算)
+      // Dynamically calculate total time (if subtask time is modified, it will be recalculated here)
       let displayTime = main.estimatedTime;
       if (subtasks.length > 0) {
         displayTime = subtasks.reduce((sum, sub) => sum + sub.estimatedTime, 0);
@@ -163,7 +424,7 @@ export default function TasksScreen() {
 
       return {
         ...main,
-        displayTime, // 用於顯示的屬性
+        displayTime, // Property used for display
         subtasks
       };
     });
@@ -176,96 +437,103 @@ export default function TasksScreen() {
     setExpandedIds(newSet);
   };
 
+  const renderStatusBadge = (status: TaskStatus, onPress: () => void) => (
+    <TouchableOpacity onPress={onPress}>
+      <View style={[styles.statusBadge, { backgroundColor: TASK_STATUS_COLORS[status].bg }]}>
+        <Text style={[styles.statusText, { color: TASK_STATUS_COLORS[status].text }]}>
+          {status}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const layout = getLayoutSizes(responsive);
+
   const renderItem = ({ item }: { item: TaskItem & { subtasks: TaskItem[], displayTime: number } }) => {
     const isExpanded = expandedIds.has(item.id);
     const hasSubtasks = item.subtasks.length > 0;
 
-    // 計算進度
+    // Progress calculation
     const totalSub = item.subtasks.length;
-    const completedSub = item.subtasks.filter(s => s.isCompleted).length;
-    const progressPercent = totalSub > 0 ? (completedSub / totalSub) * 100 : (item.isCompleted ? 100 : 0);
-
-    // Responsive styles
-    const taskHeaderPadding = responsive.isMobile ? 16 : responsive.isTablet ? 20 : 24;
-    const taskTitleSize = responsive.isMobile ? 18 : responsive.isTablet ? 20 : 22;
-    const taskDescSize = responsive.isMobile ? 14 : responsive.isTablet ? 15 : 16;
+    const completedSub = item.subtasks.filter(s => isStatusComplete(s.status)).length;
+    const hasProgressFromSubtasks = totalSub > 0;
+    const progressPercent = hasProgressFromSubtasks
+      ? (completedSub / totalSub) * 100
+      : isStatusComplete(item.status) || item.isCompleted
+      ? 100
+      : 0;
+    const shouldShowProgress = hasProgressFromSubtasks;
 
     return (
       <View style={styles.card}>
-        <View style={[styles.taskHeader, { padding: taskHeaderPadding }]}>
+        <View style={[styles.taskHeader, { padding: layout.cardHeaderPadding }]}>
 
-          {/* 上半部：類別與標題 */}
+          {/* Top part: category and title */}
           <View style={styles.headerTop}>
             {/* Status Badge */}
-            <TouchableOpacity
-              onPress={() => {
-                setStatusPickerTaskId(item.id);
-                setStatusPickerVisible(item.id);
-              }}
+            {renderStatusBadge(item.status, () => {
+              setStatusPickerTaskId(item.id);
+              setStatusPickerVisible(item.id);
+            })}
+
+            <Pressable
+              onPress={() => openTagModalForTask(item.id, true)}
+              style={({ pressed }) => [
+                styles.categoryBadge,
+                pressed && { opacity: 0.75 },
+              ]}
             >
-              <View style={[styles.statusBadge, { backgroundColor: TASK_STATUS_COLORS[item.status].bg }]}>
-                <Text style={[styles.statusText, { color: TASK_STATUS_COLORS[item.status].text }]}>
-                  {item.status}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.categoryBadge}>
               <Text style={styles.categoryText}>{item.category || TASK_SCREEN_STRINGS.tasksList.defaultCategory}</Text>
-            </View>
+            </Pressable>
 
-            {/* 標題 (可編輯) */}
-            <View style={{ flex: 1 }}>
+            {/* Title (editable) */}
+            <View style={styles.titleContainer}>
               <EditableField
                 value={item.title}
-                textStyle={[styles.taskTitle, { fontSize: taskTitleSize }]}
+                textStyle={[styles.taskTitle, { fontSize: layout.taskTitleSize }]}
                 onSave={(val) => updateTaskField(item.id, 'title', val)}
               />
             </View>
 
-            {/* 展開箭頭 */}
+            {/* Expand arrow */}
             {hasSubtasks && (
-              <TouchableOpacity onPress={() => toggleExpand(item.id)} style={{ padding: 4 }}>
+              <TouchableOpacity onPress={() => toggleExpand(item.id)} style={styles.expandButton}>
                 <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color="#999" />
               </TouchableOpacity>
             )}
           </View>
 
-          {/* 描述 (可編輯) */}
+          {/* Description (editable) */}
           <EditableField
             value={item.description}
             placeholder={TASK_SCREEN_STRINGS.tasksList.addDescriptionPlaceholder}
-            textStyle={[styles.taskDesc, { fontSize: taskDescSize }]}
+            textStyle={[styles.taskDesc, { fontSize: layout.taskDescSize }]}
             onSave={(val) => updateTaskField(item.id, 'description', val)}
           />
 
-          {/* === Meta 資訊 (Tag & Time) === */}
-          {/* 修改點：這裡不再把整個區塊隱藏，而是根據情況顯示內容 */}
+          {/* Tags */}
           <View style={styles.tagsRow}>
-
-            {/* 只有在「沒有子任務」時，才在這裡顯示可編輯的時間欄位 */}
-            {/* 有子任務時，時間會顯示在下方的 totalTimeBadge，避免重複 */}
-            {!hasSubtasks && (
-              <>
-                <Text style={styles.clockIcon}>⏱</Text>
-                <EditableField
-                  value={item.estimatedTime.toString()}
-                  isNumeric
-                  textStyle={styles.tagTime}
-                  containerStyle={styles.timeTagContainer}
-                  onSave={(val) => updateTaskField(item.id, 'estimatedTime', parseInt(val) || 0)}
-                />
-                <Text style={styles.tagUnit}>{TASK_SCREEN_STRINGS.tasksList.timeUnit}</Text>
-              </>
-            )}
-
-            {/* Tags 現在永遠顯示，無論是不是主任務 */}
-            <TagsDisplay tags={item.tags} />
+            <TagsDisplay tags={item.tags} onEdit={() => openTagModalForTask(item.id, true)} />
           </View>
 
+          {/* Show time for single task (after progress bar, same position as when there are subtasks) */}
+          {!hasSubtasks && (
+            <View style={styles.singleTimeRow}>
+              <Text style={styles.clockIcon}>⏱</Text>
+              <EditableField
+                value={item.estimatedTime.toString()}
+                isNumeric
+                textStyle={styles.tagTime}
+                containerStyle={styles.timeTagContainer}
+                onSave={(val) => updateTaskField(item.id, 'estimatedTime', parseInt(val) || 0)}
+              />
+              <Text style={styles.tagUnit}>{TASK_SCREEN_STRINGS.tasksList.timeUnit}</Text>
+            </View>
+          )}
 
-          {/* 有子任務時顯示：進度條 + 總時間 (唯讀) */}
-          {hasSubtasks && (
+
+          {/* When there are subtasks, show: progress bar + total time (read-only) */}
+          {shouldShowProgress && (
             <View style={styles.progressRow}>
               <View style={styles.progressContainer}>
                 <View style={styles.progressBarBg}>
@@ -276,7 +544,7 @@ export default function TasksScreen() {
                 </Text>
               </View>
 
-              {/* 這裡顯示加總後的時間 (唯讀) */}
+              {/* Show the total time (read-only) */}
               <View style={styles.totalTimeBadge}>
                 <Text style={styles.totalTimeText}>
                   {TASK_SCREEN_STRINGS.tasksList.totalTimePrefix} {item.displayTime} {TASK_SCREEN_STRINGS.tasksList.totalTimeSuffix}
@@ -286,67 +554,59 @@ export default function TasksScreen() {
           )}
         </View>
 
-        {/* 展開子任務 */}
+        {/* Expand subtasks */}
         {isExpanded && hasSubtasks && (
           <View style={styles.subtaskList}>
             {item.subtasks.map((sub) => {
-              const subtaskPaddingH = responsive.isMobile ? 16 : responsive.isTablet ? 20 : 24;
-              const subtaskPaddingV = responsive.isMobile ? 12 : responsive.isTablet ? 14 : 16;
+              const { horizontal: subtaskPaddingH, vertical: subtaskPaddingV } = getSubtaskPadding(responsive);
+              const subStatusComplete = isStatusComplete(sub.status);
               return (
               <View key={sub.id} style={[styles.subtaskContainer, { paddingHorizontal: subtaskPaddingH, paddingVertical: subtaskPaddingV }]}>
                 <View style={styles.subtaskRow}>
-                  {/* 完成勾選 */}
-                  <TouchableOpacity onPress={() => updateTaskField(sub.id, 'isCompleted', !sub.isCompleted)}>
-                    <Ionicons
-                      name={sub.isCompleted ? "checkbox" : "square-outline"}
-                      size={24}
-                      color={sub.isCompleted ? "#4CAF50" : "#999"}
-                    />
-                  </TouchableOpacity>
+                  <View style={styles.subtaskContent}>
+                    <View style={styles.subtaskHeaderRow}>
+                      {/* Subtask Status (replaces checkbox) */}
+                      {renderStatusBadge(sub.status, () => {
+                        setStatusPickerTaskId(sub.id);
+                        setStatusPickerVisible(sub.id);
+                      })}
 
-                  <View style={{ flex: 1, marginLeft: 8 }}>
-                    {/* 子任務標題 (可編輯) */}
-                    <EditableField
-                      value={sub.title}
-                      textStyle={[styles.subtaskText, sub.isCompleted && styles.completedText]}
-                      onSave={(val) => updateTaskField(sub.id, 'title', val)}
-                    />
-                    {/* 子任務描述 (可編輯) */}
+                      {/* Subtask title (editable) */}
+                      <EditableField
+                        value={sub.title}
+                        textStyle={[styles.subtaskText, subStatusComplete && styles.completedText]}
+                        onSave={(val) => updateTaskField(sub.id, 'title', val)}
+                      />
+                    </View>
+
+                    {/* Subtask title (editable) */}
+                    {/* Subtask description (editable) */}
                     <EditableField
                       value={sub.description}
                       placeholder={TASK_SCREEN_STRINGS.tasksList.noDescriptionPlaceholder}
                       textStyle={styles.subtaskDesc}
                       onSave={(val) => updateTaskField(sub.id, 'description', val)}
                     />
-                  </View>
-                </View>
 
-                {/* 子任務 Meta */}
-                <View style={styles.tagsRow}>
-                  <Text style={styles.clockIcon}>⏱</Text>
-                  {/* 子任務時間 (可編輯) */}
-                  <EditableField
-                    value={sub.estimatedTime.toString()}
-                    isNumeric
-                    textStyle={styles.tagTime}
-                    containerStyle={styles.timeTagContainer}
-                    onSave={(val) => updateTaskField(sub.id, 'estimatedTime', parseInt(val) || 0)}
-                  />
-                  <Text style={styles.tagUnit}>{TASK_SCREEN_STRINGS.tasksList.timeUnit}</Text>
-                  <TagsDisplay tags={sub.tags} />
-                  {/* Subtask Status Badge */}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setStatusPickerTaskId(sub.id);
-                      setStatusPickerVisible(sub.id);
-                    }}
-                  >
-                    <View style={[styles.statusBadge, { backgroundColor: TASK_STATUS_COLORS[sub.status].bg }]}>
-                      <Text style={[styles.statusText, { color: TASK_STATUS_COLORS[sub.status].text }]}>
-                        {sub.status}
-                      </Text>
+                    {/* Subtask Meta */}
+                    <View style={styles.subtaskMetaContainer}>
+                      <View style={[styles.tagsRow, styles.subtaskTagsRow]}>
+                        <TagsDisplay tags={sub.tags} onEdit={() => openTagModalForTask(sub.id, false)} />
+                      </View>
+                      <View style={[styles.subtaskTimeRow]}>
+                        <Text style={styles.clockIcon}>⏱</Text>
+                        {/* Subtask time (editable) */}
+                        <EditableField
+                          value={sub.estimatedTime.toString()}
+                          isNumeric
+                          textStyle={styles.tagTime}
+                          containerStyle={styles.timeTagContainer}
+                          onSave={(val) => updateTaskField(sub.id, 'estimatedTime', parseInt(val) || 0)}
+                        />
+                        <Text style={styles.tagUnit}>{TASK_SCREEN_STRINGS.tasksList.timeUnit}</Text>
+                      </View>
                     </View>
-                  </TouchableOpacity>
+                  </View>
                 </View>
               </View>
               );
@@ -357,39 +617,32 @@ export default function TasksScreen() {
     );
   };
 
-  // Responsive styles for header, list, and FAB
-  const headerPadding = responsive.isMobile ? 20 : responsive.isTablet ? 24 : 32;
-  const listPadding = responsive.isMobile ? 16 : responsive.isTablet ? 24 : 32;
-  const fabSize = responsive.isMobile ? 60 : responsive.isTablet ? 64 : 68;
-  const fabIconSize = responsive.isMobile ? 32 : responsive.isTablet ? 34 : 36;
-  const headerTitleSize = responsive.isMobile ? 24 : responsive.isTablet ? 26 : 28;
-
   return (
     <SafeAreaView style={styles.container}>
-      <View style={[styles.header, { padding: headerPadding }]}>
-        <Text style={[styles.headerTitle, { fontSize: headerTitleSize }]}>{TASK_SCREEN_STRINGS.headerTitle}</Text>
+      <View style={[styles.header, { padding: layout.screenHeaderPadding }]}>
+        <Text style={[styles.headerTitle, { fontSize: layout.headerTitleSize }]}>{TASK_SCREEN_STRINGS.headerTitle}</Text>
       </View>
       <FlatList
         data={structuredTasks}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={[styles.listContent, { padding: listPadding }]}
-        keyboardShouldPersistTaps="handled" // 讓點擊輸入框外的區域能關閉鍵盤
+        contentContainerStyle={[styles.listContent, { padding: layout.listPadding }]}
+        keyboardShouldPersistTaps="handled" // Allow tapping outside the input field to close the keyboard
       />
       <TouchableOpacity 
         style={[
           styles.fab, 
           { 
-            width: fabSize, 
-            height: fabSize, 
-            borderRadius: fabSize / 2,
-            right: responsive.isDesktop ? 32 : 20,
-            bottom: responsive.isDesktop ? 40 : 30,
+            width: layout.fabSize, 
+            height: layout.fabSize, 
+            borderRadius: layout.fabSize / 2,
+            right: layout.fabPosition.right,
+            bottom: layout.fabPosition.bottom,
           }
         ]} 
         onPress={() => router.push('/add_task')}
       >
-        <Ionicons name="add" size={fabIconSize} color="white" />
+        <Ionicons name="add" size={layout.fabIconSize} color="white" />
       </TouchableOpacity>
 
       {/* Status Picker Modal */}
@@ -451,18 +704,79 @@ export default function TasksScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Tag Selection Modal (reuse add_task modal) */}
+      <TagSelectionModal
+        visible={!!editingTagTarget}
+        editingTarget={editingTagTarget}
+        tempTags={tempTags}
+        tagGroups={tagGroups}
+        tagGroupOrder={tagGroupOrder}
+        tagGroupColors={tagGroupColors}
+        editingTagInGroup={editingTagInGroup}
+        newTagInGroupName={newTagInGroupName}
+        showTagGroupInput={showTagGroupInput}
+        newTagGroupName={newTagGroupName}
+        selectTagsTitle={TASK_SCREEN_STRINGS.addTask.selectTagsTitle}
+        newTagPlaceholder={TASK_SCREEN_STRINGS.addTask.newTagPlaceholder}
+        newTagGroupPlaceholder={TASK_SCREEN_STRINGS.addTask.newTagGroupPlaceholder}
+        confirmButtonText={TASK_SCREEN_STRINGS.addTask.confirmButton}
+        onClose={() => {
+          setEditingTagTarget(null);
+          setEditingTaskId(null);
+        }}
+        onToggleTag={toggleTagInGroup}
+        onAddTagToGroup={handleAddTagToGroup}
+        onSaveTagToGroup={handleSaveTagToGroup}
+        onCancelTagInGroup={() => {
+          setEditingTagInGroup(null);
+          setNewTagInGroupName('');
+        }}
+        onNewTagInGroupNameChange={setNewTagInGroupName}
+        onAddNewTagGroup={handleAddNewTagGroup}
+        onSaveNewTagGroup={handleSaveNewTagGroup}
+        onCancelTagGroup={() => {
+          setShowTagGroupInput(false);
+          setNewTagGroupName('');
+        }}
+        onNewTagGroupNameChange={setNewTagGroupName}
+        onSave={saveTagsForTask}
+      />
     </SafeAreaView>
   );
 }
 
-// Tag 組件 (保持不變)
-const TagsDisplay = ({ tags }: { tags: TaskItem['tags'] }) => (
-  <>
-    {tags.place && <View style={[styles.miniTag, { backgroundColor: '#E0F2F1' }]}><Text style={[styles.miniTagText, { color: '#00695C' }]}>{tags.place}</Text></View>}
-    {tags.priority && <View style={[styles.miniTag, { backgroundColor: '#FFF3E0' }]}><Text style={[styles.miniTagText, { color: '#E65100' }]}>{tags.priority}</Text></View>}
-    {tags.attention && <View style={[styles.miniTag, { backgroundColor: '#F3E5F5' }]}><Text style={[styles.miniTagText, { color: '#7B1FA2' }]}>{tags.attention}</Text></View>}
-    {tags.tools.slice(0, 2).map(t => <View key={t} style={[styles.miniTag, { backgroundColor: '#E3F2FD' }]}><Text style={[styles.miniTagText, { color: '#1565C0' }]}>{t}</Text></View>)}
-  </>
+const TagsDisplay = ({ tags, onEdit }: { tags: TaskItem['tags']; onEdit: () => void }) => (
+  <Pressable
+    onPress={onEdit}
+    style={({ pressed }) => [styles.tagsPressable, pressed && { opacity: 0.7 }]}
+  >
+    <View style={styles.tagChipRow}>
+      {tags.place && (
+        <View style={[styles.miniTag, { backgroundColor: '#E0F2F1' }]}>
+          <Text style={[styles.miniTagText, { color: '#00695C' }]}>{tags.place}</Text>
+        </View>
+      )}
+      {tags.priority && (
+        <View style={[styles.miniTag, { backgroundColor: '#FFF3E0' }]}>
+          <Text style={[styles.miniTagText, { color: '#E65100' }]}>{tags.priority}</Text>
+        </View>
+      )}
+      {tags.attention && (
+        <View style={[styles.miniTag, { backgroundColor: '#F3E5F5' }]}>
+          <Text style={[styles.miniTagText, { color: '#7B1FA2' }]}>{tags.attention}</Text>
+        </View>
+      )}
+      {tags.tools.slice(0, 2).map((t) => (
+        <View key={t} style={[styles.miniTag, { backgroundColor: '#E3F2FD' }]}>
+          <Text style={[styles.miniTagText, { color: '#1565C0' }]}>{t}</Text>
+        </View>
+      ))}
+    </View>
+    <View style={styles.editIcon}>
+      <Ionicons name="create-outline" size={14} color="#666" />
+    </View>
+  </Pressable>
 );
 
 const styles = StyleSheet.create({
@@ -476,6 +790,8 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 8 },
   categoryBadge: { backgroundColor: '#333', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginRight: 4 },
   categoryText: { fontSize: 10, fontWeight: 'bold', color: '#fff', textTransform: 'uppercase' },
+  titleContainer: { flex: 1 },
+  expandButton: { padding: 4 },
 
   // Editable Styles
   inputWrapper: { borderBottomWidth: 1, borderBottomColor: '#2196f3', paddingBottom: 2 },
@@ -496,16 +812,26 @@ const styles = StyleSheet.create({
   subtaskList: { backgroundColor: '#FAFAFA', borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingVertical: 4 },
   subtaskContainer: { borderBottomWidth: 1, borderBottomColor: '#eee' },
   subtaskRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
-  subtaskText: { fontSize: 15, color: '#333', fontWeight: '500' },
+  subtaskContent: { flex: 1, marginLeft: 0 },
+  subtaskHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  subtaskText: { fontSize: 15, color: '#333', fontWeight: '500', flex: 1 },
   subtaskDesc: { fontSize: 13, color: '#999', marginTop: 2 },
   completedText: { textDecorationLine: 'line-through', color: '#aaa' },
+  subtaskMetaRow: { marginTop: 8 },
+  subtaskMetaContainer: { marginTop: 6, gap: 6 },
+  subtaskTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
 
   // Tags & Time Editing
-  tagsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 },
+  tagsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 6, flexWrap: 'wrap', marginTop: 4 },
+  tagsPressable: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  tagChipRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 },
+  editIcon: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#f2f2f2', alignItems: 'center', justifyContent: 'center' },
+  subtaskTagsRow: { marginTop: 8 },
   timeTagContainer: { borderBottomWidth: 1, borderBottomColor: '#ccc' },
   tagTime: { fontSize: 13, color: '#333', fontWeight: '600', textAlign: 'center', minWidth: 20 },
   tagUnit: { fontSize: 12, color: '#888', marginRight: 4 },
   clockIcon: { fontSize: 12 },
+  singleTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
   miniTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   miniTagText: { fontSize: 10, fontWeight: '600' },
 
@@ -567,3 +893,29 @@ const styles = StyleSheet.create({
 
   fab: { position: 'absolute', backgroundColor: '#2196f3', justifyContent: 'center', alignItems: 'center', elevation: 5 },
 });
+
+const getLayoutSizes = (responsive: ReturnType<typeof useResponsive>) => {
+  const cardHeaderPadding = responsive.isMobile ? 16 : responsive.isTablet ? 20 : 24;
+  const screenHeaderPadding = responsive.isMobile ? 20 : responsive.isTablet ? 24 : 32;
+  const taskTitleSize = responsive.isMobile ? 18 : responsive.isTablet ? 20 : 22;
+  const taskDescSize = responsive.isMobile ? 14 : responsive.isTablet ? 15 : 16;
+  const headerTitleSize = responsive.isMobile ? 24 : responsive.isTablet ? 26 : 28;
+  const listPadding = responsive.isMobile ? 16 : responsive.isTablet ? 24 : 32;
+  const fabSize = responsive.isMobile ? 60 : responsive.isTablet ? 64 : 68;
+  const fabIconSize = responsive.isMobile ? 32 : responsive.isTablet ? 34 : 36;
+  const fabPosition = {
+    right: responsive.isDesktop ? 32 : 20,
+    bottom: responsive.isDesktop ? 40 : 30,
+  };
+  return {
+    cardHeaderPadding,
+    screenHeaderPadding,
+    taskTitleSize,
+    taskDescSize,
+    headerTitleSize,
+    listPadding,
+    fabSize,
+    fabIconSize,
+    fabPosition,
+  };
+};
