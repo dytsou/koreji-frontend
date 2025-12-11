@@ -203,7 +203,7 @@ export default function TasksScreen() {
 
     // Progress calculation
     const totalSub = item.subtasks.length;
-    const completedSub = item.subtasks.filter(s => s.isCompleted).length;
+    const completedSub = item.subtasks.filter(s => isStatusComplete(s.status)).length;
     const hasProgressFromSubtasks = totalSub > 0;
     const progressPercent = hasProgressFromSubtasks
       ? (completedSub / totalSub) * 100
@@ -214,7 +214,7 @@ export default function TasksScreen() {
 
     return (
       <View style={styles.card}>
-        <View style={[styles.taskHeader, { padding: layout.headerPadding }]}>
+        <View style={[styles.taskHeader, { padding: layout.cardHeaderPadding }]}>
 
           {/* Top part: category and title */}
           <View style={styles.headerTop}>
@@ -301,6 +301,7 @@ export default function TasksScreen() {
           <View style={styles.subtaskList}>
             {item.subtasks.map((sub) => {
               const { horizontal: subtaskPaddingH, vertical: subtaskPaddingV } = getSubtaskPadding(responsive);
+              const subStatusComplete = isStatusComplete(sub.status);
               return (
               <View key={sub.id} style={[styles.subtaskContainer, { paddingHorizontal: subtaskPaddingH, paddingVertical: subtaskPaddingV }]}>
                 <View style={styles.subtaskRow}>
@@ -315,7 +316,7 @@ export default function TasksScreen() {
                       {/* Subtask title (editable) */}
                       <EditableField
                         value={sub.title}
-                        textStyle={[styles.subtaskText, sub.isCompleted && styles.completedText]}
+                        textStyle={[styles.subtaskText, subStatusComplete && styles.completedText]}
                         onSave={(val) => updateTaskField(sub.id, 'title', val)}
                       />
                     </View>
@@ -360,7 +361,7 @@ export default function TasksScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={[styles.header, { padding: layout.headerPadding }]}>
+      <View style={[styles.header, { padding: layout.screenHeaderPadding }]}>
         <Text style={[styles.headerTitle, { fontSize: layout.headerTitleSize }]}>{TASK_SCREEN_STRINGS.headerTitle}</Text>
       </View>
       <FlatList
@@ -572,7 +573,8 @@ const styles = StyleSheet.create({
 });
 
 const getLayoutSizes = (responsive: ReturnType<typeof useResponsive>) => {
-  const headerPadding = responsive.isMobile ? 16 : responsive.isTablet ? 20 : 24;
+  const cardHeaderPadding = responsive.isMobile ? 16 : responsive.isTablet ? 20 : 24;
+  const screenHeaderPadding = responsive.isMobile ? 20 : responsive.isTablet ? 24 : 32;
   const taskTitleSize = responsive.isMobile ? 18 : responsive.isTablet ? 20 : 22;
   const taskDescSize = responsive.isMobile ? 14 : responsive.isTablet ? 15 : 16;
   const headerTitleSize = responsive.isMobile ? 24 : responsive.isTablet ? 26 : 28;
@@ -584,7 +586,8 @@ const getLayoutSizes = (responsive: ReturnType<typeof useResponsive>) => {
     bottom: responsive.isDesktop ? 40 : 30,
   };
   return {
-    headerPadding,
+    cardHeaderPadding,
+    screenHeaderPadding,
     taskTitleSize,
     taskDescSize,
     headerTitleSize,
