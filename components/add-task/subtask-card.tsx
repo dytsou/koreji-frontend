@@ -1,8 +1,11 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TagDisplayRow } from '@/components/ui/tag-display-row';
 import { TimeDeadlineRow } from './time-deadline-row';
+import { TASK_STATUSES, TASK_STATUS_COLORS } from '@/constants/task-status';
 import { type LocalSubTask } from '@/types/add-task';
+import { type TaskStatus } from '@/types/task-status';
 
 interface SubtaskCardProps {
   subtask: LocalSubTask;
@@ -15,7 +18,9 @@ interface SubtaskCardProps {
   subtaskTitlePlaceholder: string;
   subtaskDescriptionPlaceholder: string;
   subtaskTagsLabel: string;
-  onUpdate: (id: string, field: keyof LocalSubTask, value: string | Date | null) => void;
+  statusLabel: string;
+  statusPlaceholder: string;
+  onUpdate: (id: string, field: keyof LocalSubTask, value: string | Date | null | TaskStatus) => void;
   onRemove: (id: string) => void;
   onDeadlinePress: (id: string) => void;
   onTagsEdit: (id: string) => void;
@@ -31,14 +36,18 @@ export function SubtaskCard({
   subtaskTitlePlaceholder,
   subtaskDescriptionPlaceholder,
   subtaskTagsLabel,
+  statusLabel,
+  statusPlaceholder,
   onUpdate,
   onRemove,
   onDeadlinePress,
   onTagsEdit,
 }: SubtaskCardProps) {
+  const [statusPickerVisible, setStatusPickerVisible] = React.useState(false);
+
   return (
     <View style={styles.subtaskCard}>
-      {/* Row 1: Title and Delete */}
+      {/* Row 1: Title, Status, and Delete */}
       <View style={styles.stRowTop}>
         <TextInput
           style={styles.stTitleInput}
@@ -47,6 +56,13 @@ export function SubtaskCard({
           value={subtask.title}
           onChangeText={(text) => onUpdate(subtask.id, 'title', text)}
         />
+        <TouchableOpacity onPress={() => setStatusPickerVisible(true)}>
+          <View style={[styles.statusBadge, { backgroundColor: TASK_STATUS_COLORS[subtask.status].bg }]}>
+            <Text style={[styles.statusText, { color: TASK_STATUS_COLORS[subtask.status].text }]}>
+              {subtask.status}
+            </Text>
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity onPress={() => onRemove(subtask.id)} style={styles.deleteBtn}>
           <Ionicons name="close" size={18} color="#666" />
         </TouchableOpacity>
@@ -81,6 +97,52 @@ export function SubtaskCard({
           <TagDisplayRow tags={subtask.tags} onEdit={() => onTagsEdit(subtask.id)} tagGroupColors={tagGroupColors} />
         </View>
       </View>
+
+      {/* Status Picker Modal */}
+      <Modal
+        visible={statusPickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setStatusPickerVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setStatusPickerVisible(false)}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Status</Text>
+              <TouchableOpacity onPress={() => setStatusPickerVisible(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalOptions}>
+              {TASK_STATUSES.map((statusOption) => {
+                const isSelected = subtask.status === statusOption;
+                return (
+                  <TouchableOpacity
+                    key={statusOption}
+                    style={[
+                      styles.statusOption,
+                      { backgroundColor: TASK_STATUS_COLORS[statusOption].bg },
+                      isSelected && styles.statusOptionSelected,
+                    ]}
+                  onPress={() => {
+                    console.log('[Status Change] Subtask ID:', subtask.id, 'New Status:', statusOption);
+                    onUpdate(subtask.id, 'status', statusOption);
+                    setStatusPickerVisible(false);
+                  }}
+                  >
+                    <Text style={[styles.statusOptionText, { color: TASK_STATUS_COLORS[statusOption].text }]}>
+                      {statusOption}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -132,4 +194,57 @@ const styles = StyleSheet.create({
     color: '#888',
     marginBottom: 6,
   },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  statusOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '80%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalOptions: {
+    gap: 12,
+  },
+  statusOption: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  statusOptionSelected: {
+    borderColor: '#2196f3',
+  },
 });
+

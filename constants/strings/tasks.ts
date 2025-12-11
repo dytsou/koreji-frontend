@@ -13,6 +13,7 @@ const TASK_SCREEN_STRINGS = {
     deadlineLabel: 'Deadline',
     tagsLabel: 'Tags',
     subtaskTagsLabel: 'Tags',
+    statusLabel: 'Status',
     
     // Placeholders
     taskTitlePlaceholder: 'Task title',
@@ -25,6 +26,13 @@ const TASK_SCREEN_STRINGS = {
     timePlaceholder: '0',
     minPlaceholder: 'min',
     deadlinePlaceholder: 'YYYY-MM-DD',
+    statusPlaceholder: 'Select status...',
+    
+    // Status options
+    statusNotStarted: 'Not started',
+    statusInProgress: 'In progress',
+    statusDone: 'Done',
+    statusArchive: 'Archive',
     
     // Buttons
     createTaskButton: 'Create Task',

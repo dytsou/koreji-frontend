@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import {
-  StyleSheet, View, Text, FlatList, TouchableOpacity, SafeAreaView, TextInput
+  StyleSheet, View, Text, FlatList, TouchableOpacity, SafeAreaView, TextInput, Modal, Pressable
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useResponsive } from '@/hooks/use-responsive';
 import { TASK_SCREEN_STRINGS } from '@/constants/strings/tasks';
+import { TASK_STATUSES, TASK_STATUS_COLORS } from '@/constants/task-status';
+import { type TaskStatus } from '@/types/task-status';
 
 // --- 資料型別 ---
 interface TaskItem {
@@ -16,6 +18,7 @@ interface TaskItem {
   category?: string;
   estimatedTime: number;
   isCompleted: boolean;
+  status: TaskStatus;
   tags: {
     priority?: string;
     attention?: string;
@@ -29,18 +32,22 @@ const INITIAL_TASKS: TaskItem[] = [
   
   {
     id: '101', parentId: '1', title: '找文獻', description: '至少五篇', estimatedTime: 60, isCompleted: true,
+    status: 'Done',
     tags: { priority: 'High', attention: 'Focus', tools: ['Computer'], place: 'Library' }
   },
   {
     id: '102', parentId: '1', title: '寫緒論', description: '', estimatedTime: 120, isCompleted: false,
+    status: 'In progress',
     tags: { priority: 'Medium', attention: 'Focus', tools: ['Computer'], place: 'Dorm' }
   },
   {
     id: '2', parentId: null, title: '整理房間', description: '週末大掃除', category: 'Home', estimatedTime: 45, isCompleted: false,
+    status: 'Not started',
     tags: { priority: 'Low', attention: 'Relax', tools: [], place: 'Home' }
   },
   {
     id: '1', parentId: null, title: '完成期末報告', description: '包含文獻回顧', category: 'School', estimatedTime: 0, isCompleted: false,
+    status: 'In progress',
     tags: { tools: ['Computer'] }
   },
 ];
@@ -127,6 +134,8 @@ export default function TasksScreen() {
   // 1. 將資料轉為 State，這樣才能修改
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [statusPickerVisible, setStatusPickerVisible] = useState<string | null>(null);
+  const [statusPickerTaskId, setStatusPickerTaskId] = useState<string | null>(null);
 
   // 2. 更新任務資料的函式 (模擬 DB Update)
   const updateTaskField = (id: string, field: keyof TaskItem, value: any) => {
@@ -187,6 +196,20 @@ export default function TasksScreen() {
 
           {/* 上半部：類別與標題 */}
           <View style={styles.headerTop}>
+            {/* Status Badge */}
+            <TouchableOpacity
+              onPress={() => {
+                setStatusPickerTaskId(item.id);
+                setStatusPickerVisible(item.id);
+              }}
+            >
+              <View style={[styles.statusBadge, { backgroundColor: TASK_STATUS_COLORS[item.status].bg }]}>
+                <Text style={[styles.statusText, { color: TASK_STATUS_COLORS[item.status].text }]}>
+                  {item.status}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
             <View style={styles.categoryBadge}>
               <Text style={styles.categoryText}>{item.category || TASK_SCREEN_STRINGS.tasksList.defaultCategory}</Text>
             </View>
@@ -239,6 +262,7 @@ export default function TasksScreen() {
             {/* Tags 現在永遠顯示，無論是不是主任務 */}
             <TagsDisplay tags={item.tags} />
           </View>
+
 
           {/* 有子任務時顯示：進度條 + 總時間 (唯讀) */}
           {hasSubtasks && (
@@ -310,6 +334,19 @@ export default function TasksScreen() {
                   />
                   <Text style={styles.tagUnit}>{TASK_SCREEN_STRINGS.tasksList.timeUnit}</Text>
                   <TagsDisplay tags={sub.tags} />
+                  {/* Subtask Status Badge */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setStatusPickerTaskId(sub.id);
+                      setStatusPickerVisible(sub.id);
+                    }}
+                  >
+                    <View style={[styles.statusBadge, { backgroundColor: TASK_STATUS_COLORS[sub.status].bg }]}>
+                      <Text style={[styles.statusText, { color: TASK_STATUS_COLORS[sub.status].text }]}>
+                        {sub.status}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
                 </View>
               </View>
               );
@@ -354,6 +391,66 @@ export default function TasksScreen() {
       >
         <Ionicons name="add" size={fabIconSize} color="white" />
       </TouchableOpacity>
+
+      {/* Status Picker Modal */}
+      <Modal
+        visible={statusPickerVisible !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setStatusPickerVisible(null);
+          setStatusPickerTaskId(null);
+        }}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => {
+            setStatusPickerVisible(null);
+            setStatusPickerTaskId(null);
+          }}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Status</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setStatusPickerVisible(null);
+                  setStatusPickerTaskId(null);
+                }}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalOptions}>
+              {TASK_STATUSES.map((status) => {
+                const isSelected = statusPickerTaskId && tasks.find(t => t.id === statusPickerTaskId)?.status === status;
+                return (
+                  <TouchableOpacity
+                    key={status}
+                    style={[
+                      styles.statusOption,
+                      { backgroundColor: TASK_STATUS_COLORS[status].bg },
+                      isSelected && styles.statusOptionSelected,
+                    ]}
+                  onPress={() => {
+                    if (statusPickerTaskId) {
+                      console.log('[Status Change] Task ID:', statusPickerTaskId, 'New Status:', status);
+                      updateTaskField(statusPickerTaskId, 'status', status);
+                      setStatusPickerVisible(null);
+                      setStatusPickerTaskId(null);
+                    }
+                  }}
+                  >
+                    <Text style={[styles.statusOptionText, { color: TASK_STATUS_COLORS[status].text }]}>
+                      {status}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -411,6 +508,62 @@ const styles = StyleSheet.create({
   clockIcon: { fontSize: 12 },
   miniTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   miniTagText: { fontSize: 10, fontWeight: '600' },
+
+  // Status Badge
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 4,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  statusOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+
+  // Status Picker Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '80%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalOptions: {
+    gap: 12,
+  },
+  statusOption: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  statusOptionSelected: {
+    borderColor: '#2196f3',
+  },
 
   fab: { position: 'absolute', backgroundColor: '#2196f3', justifyContent: 'center', alignItems: 'center', elevation: 5 },
 });

@@ -1,20 +1,23 @@
-// 所有的 Tag 集合
+import { type TaskStatus } from '@/types/task-status';
+
+// Task Tags Type
 export interface TaskTags {
     priority?: 'High' | 'Medium' | 'Low';
     attention?: 'Focus' | 'Relax';
     tools: string[];
-    place?: string; // 允許自定義字串
+    place?: string; // Allow custom string
 }
 
-// 資料庫中的單一 Row 結構
+// Single Row Structure in Database
 export interface TaskItem {
     id: string; // UUID
-    parentId: string | null; // 區分主子任務的關鍵
+    parentId: string | null; // Key to distinguish main and subtasks
     title: string;
     description: string;
-    category: string | null; // 只有 parentId 為 null 時才有值
-    estimatedTime: number; // 分鐘
+    category: string | null; // Only has value when parentId is null
+    estimatedTime: number; // Minutes
     isCompleted: boolean;
+    status: TaskStatus;
     tags: TaskTags;
     createdAt: number;
 }
