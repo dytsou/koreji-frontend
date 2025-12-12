@@ -219,12 +219,13 @@ export default function TasksScreen() {
     console.log(`[DB Update] Task ${id}: ${field} = ${value}`);
   };
 
-  // Fetch tasks from backend
+  // Fetch tasks from backend (only top-level tasks, not subtasks)
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await get<ApiTaskResponse[]>('/tasks');
+      // Only fetch top-level tasks (is_subtask=false)
+      const data = await get<ApiTaskResponse[]>('/tasks?is_subtask=false');
       const flattened = Array.isArray(data) ? flattenTasks(data) : [];
       setTasks(flattened);
     } catch (err) {
@@ -750,7 +751,6 @@ export default function TasksScreen() {
             onPress={(e) => e.stopPropagation()}
             style={styles.modalContent}
             accessibilityViewIsModal
-            accessibilityRole="dialog"
             accessibilityLabel="Select task status"
           >
             <View style={styles.modalHeader}>

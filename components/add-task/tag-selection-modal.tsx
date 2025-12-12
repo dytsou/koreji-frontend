@@ -72,7 +72,6 @@ export function TagSelectionModal({
         <View
           style={styles.modalCard}
           accessibilityViewIsModal
-          accessibilityRole="dialog"
           accessibilityLabel={selectTagsTitle}
         >
           <View style={styles.modalHeader}>
