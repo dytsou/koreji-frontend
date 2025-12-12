@@ -12,8 +12,8 @@ import { TagSelectionModal } from '@/components/add-task/tag-selection-modal';
 import { type TaskTags } from '@/components/ui/tag-display-row';
 import { DEFAULT_TAG_GROUP_ORDER, TAG_GROUPS, TAG_GROUP_COLORS } from '@/constants/task-tags';
 import { type TaskStatus } from '@/types/task-status';
-import { get, ApiClientError, ApiErrorType } from '@/services/api/client';
-import { mapStatusFromBackend, type BackendTaskStatus } from '@/utils/mapping/status';
+import { get, patch, ApiClientError, ApiErrorType } from '@/services/api/client';
+import { mapStatusFromBackend, mapStatusToBackend, type BackendTaskStatus } from '@/utils/mapping/status';
 
 const getSubtaskPadding = (responsive: ReturnType<typeof useResponsive>) => {
   if (responsive.isMobile) return STYLE_CONSTANTS.subtaskPadding.mobile;
@@ -177,46 +177,90 @@ export default function TasksScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 2. Function to update task data (simulate DB Update)
-  const updateTaskField = (id: string, field: keyof TaskItem, value: any) => {
-    setTasks(prevTasks => {
-      const targetTask = prevTasks.find(t => t.id === id);
-      if (!targetTask) return prevTasks;
+  // 2. Function to update task data (syncs with backend)
+  const updateTaskField = async (id: string, field: keyof TaskItem, value: any) => {
+    const targetTask = tasks.find(t => t.id === id);
+    if (!targetTask) return;
 
-      const parentId = targetTask.parentId;
-      const parentTask = parentId ? prevTasks.find(t => t.id === parentId) : null;
+    const isSubtask = targetTask.parentId !== null;
+    const parentId = targetTask.parentId;
+    const parentTask = parentId ? tasks.find(t => t.id === parentId) : null;
 
-      // Update the target task first
-      let nextTasks = prevTasks.map(t => (t.id === id ? { ...t, [field]: value } : t));
+    // Map frontend field names to backend field names
+    const fieldMapping: Record<string, string> = {
+      title: 'title',
+      description: 'description',
+      estimatedTime: 'estimated_minutes',
+      status: 'status',
+      category: 'category',
+    };
 
-      const shouldBumpParent =
-        field === 'status' &&
-        value === 'In progress' &&
-        parentId &&
-        parentTask?.status === 'Not started';
+    const backendField = fieldMapping[field];
+    if (!backendField) {
+      console.warn(`[Update Task] Unknown field: ${field}`);
+      return;
+    }
 
-      if (shouldBumpParent) {
-        nextTasks = nextTasks.map(t => (t.id === parentId ? { ...t, status: 'In progress' } : t));
+    // Prepare payload
+    const payload: Record<string, unknown> = {};
+    
+    if (field === 'status') {
+      payload.status = mapStatusToBackend(value as TaskStatus);
+    } else if (field === 'estimatedTime') {
+      payload.estimated_minutes = value;
+    } else {
+      payload[backendField] = value;
+    }
+
+    try {
+      // Determine endpoint based on whether it's a subtask
+      const endpoint = isSubtask 
+        ? `/tasks/subtasks/${id}`
+        : `/tasks/${id}`;
+      
+      await patch(endpoint, payload);
+
+      // Update local state optimistically
+      setTasks(prevTasks => {
+        let nextTasks = prevTasks.map(t => (t.id === id ? { ...t, [field]: value } : t));
+
+        const shouldBumpParent =
+          field === 'status' &&
+          value === 'In progress' &&
+          parentId &&
+          parentTask?.status === 'Not started';
+
+        if (shouldBumpParent) {
+          nextTasks = nextTasks.map(t => (t.id === parentId ? { ...t, status: 'In progress' } : t));
+        }
+
+        const shouldCompleteChildren =
+          field === 'status' &&
+          (value === 'Done' || value === 'Archive');
+
+        if (shouldCompleteChildren) {
+          nextTasks = nextTasks.map(t => {
+            const isChild = t.parentId === id;
+            const targetStatus = value;
+            const shouldUpdateChild = targetStatus === 'Archive'
+              ? t.status !== 'Archive' // archive all non-archived children (including Done)
+              : t.status === 'Not started' || t.status === 'In progress'; // only bump incomplete to Done
+            return isChild && shouldUpdateChild ? { ...t, status: targetStatus } : t;
+          });
+        }
+
+        return nextTasks;
+      });
+
+      console.log(`[Backend Update] Task ${id}: ${field} = ${value}`);
+    } catch (error) {
+      console.error(`[Backend Update Failed] Task ${id}: ${field} = ${value}`, error);
+      // Optionally show error to user or revert optimistic update
+      if (error instanceof ApiClientError) {
+        // Could show an alert here
+        console.error('Update failed:', error.message);
       }
-
-      const shouldCompleteChildren =
-        field === 'status' &&
-        (value === 'Done' || value === 'Archive');
-
-      if (shouldCompleteChildren) {
-        nextTasks = nextTasks.map(t => {
-          const isChild = t.parentId === id;
-          const targetStatus = value;
-          const shouldUpdateChild = targetStatus === 'Archive'
-            ? t.status !== 'Archive' // archive all non-archived children (including Done)
-            : t.status === 'Not started' || t.status === 'In progress'; // only bump incomplete to Done
-          return isChild && shouldUpdateChild ? { ...t, status: targetStatus } : t;
-        });
-      }
-
-      return nextTasks;
-    });
-    console.log(`[DB Update] Task ${id}: ${field} = ${value}`);
+    }
   };
 
   // Fetch tasks from backend (only top-level tasks, not subtasks)
@@ -403,7 +447,7 @@ export default function TasksScreen() {
     setNewTagGroupName('');
   };
 
-  const saveTagsForTask = () => {
+  const saveTagsForTask = async () => {
     if (!editingTaskId) {
       setEditingTagTarget(null);
       return;
@@ -422,18 +466,14 @@ export default function TasksScreen() {
     const currentTask = tasks.find((t) => t.id === editingTaskId);
     if (currentTask) {
       console.log('[Tag Update] Task:', editingTaskId, 'New tags:', selection.tagGroups);
-      if (includeCategory) {
-        console.log(
-          '[Category Update] Task:',
-          editingTaskId,
-          'From:',
-          currentTask.category || '(none)',
-          'To:',
-          categoryValue || currentTask.category || '(none)'
-        );
+      
+      // Update category in backend if it changed
+      if (includeCategory && categoryValue !== currentTask.category) {
+        await updateTaskField(editingTaskId, 'category', categoryValue || null);
       }
     }
 
+    // Update local state
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id !== editingTaskId) return t;
