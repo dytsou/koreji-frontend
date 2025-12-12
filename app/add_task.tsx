@@ -148,6 +148,14 @@ export default function AddTaskScreen() {
       );
       return;
     }
+
+    // Log time and deadline information if provided before AI generate
+    console.log('[AI Generate] Task information provided before AI generate:', {
+      title: mainTitle.trim(),
+      time: parseInt(mainTime) || 0,
+      deadline: mainDeadline ? formatDate(mainDeadline) : null,
+    });
+
     Alert.alert(
       TASK_SCREEN_STRINGS.addTask.alerts.aiGenerateAlertTitle,
       TASK_SCREEN_STRINGS.addTask.alerts.aiGeneratePlaceholder
