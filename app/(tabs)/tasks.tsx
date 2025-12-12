@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet, View, Text, FlatList, TouchableOpacity, SafeAreaView, TextInput, Modal, Pressable, Platform
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useResponsive } from '@/hooks/use-responsive';
 import { TASK_SCREEN_STRINGS } from '@/constants/strings/tasks';
@@ -13,6 +13,7 @@ import { type TaskTags } from '@/components/ui/tag-display-row';
 import { DEFAULT_TAG_GROUP_ORDER, TAG_GROUPS, TAG_GROUP_COLORS } from '@/constants/task-tags';
 import { type TaskStatus } from '@/types/task-status';
 import { get, ApiClientError, ApiErrorType } from '@/services/api/client';
+import { mapStatusFromBackend, type BackendTaskStatus } from '@/utils/mapping/status';
 
 const getSubtaskPadding = (responsive: ReturnType<typeof useResponsive>) => {
   if (responsive.isMobile) return STYLE_CONSTANTS.subtaskPadding.mobile;
@@ -40,8 +41,6 @@ interface TaskItem {
   };
 }
 
-type BackendTaskStatus = 'pending' | 'in_progress' | 'completed' | 'archived';
-
 interface ApiTaskResponse {
   id: string;
   parent_id: string | null;
@@ -53,21 +52,6 @@ interface ApiTaskResponse {
   tags?: unknown[]; // tags not mapped in UI yet
   subtasks?: ApiTaskResponse[];
 }
-
-const mapStatus = (status: BackendTaskStatus): TaskStatus => {
-  switch (status) {
-    case 'pending':
-      return 'Not started';
-    case 'in_progress':
-      return 'In progress';
-    case 'completed':
-      return 'Done';
-    case 'archived':
-      return 'Archive';
-    default:
-      return 'Not started';
-  }
-};
 
 const flattenTasks = (items: ApiTaskResponse[], parentId: string | null = null): TaskItem[] => {
   const result: TaskItem[] = [];
@@ -81,7 +65,7 @@ const flattenTasks = (items: ApiTaskResponse[], parentId: string | null = null):
       category: t.category || undefined,
       estimatedTime: t.estimated_minutes ?? 0,
       isCompleted: t.status === 'completed',
-      status: mapStatus(t.status),
+      status: mapStatusFromBackend(t.status),
       tags: { tools: [] },
     };
     result.push(task);
@@ -236,32 +220,40 @@ export default function TasksScreen() {
   };
 
   // Fetch tasks from backend
-  useEffect(() => {
-    const fetchTasks = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await get<ApiTaskResponse[]>('/tasks');
-        const flattened = Array.isArray(data) ? flattenTasks(data) : [];
-        setTasks(flattened);
-      } catch (err) {
-        if (err instanceof ApiClientError) {
-          if (err.type === ApiErrorType.CONFIG) {
-            setError('Missing API base URL. Set EXPO_PUBLIC_API_BASE_URL to your FastAPI server.');
-          } else {
-            setError(err.message);
-          }
+  const fetchTasks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await get<ApiTaskResponse[]>('/tasks');
+      const flattened = Array.isArray(data) ? flattenTasks(data) : [];
+      setTasks(flattened);
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        if (err.type === ApiErrorType.CONFIG) {
+          setError('Missing API base URL. Set EXPO_PUBLIC_API_BASE_URL to your FastAPI server.');
         } else {
-          setError('Unable to load tasks.');
+          setError(err.message);
         }
-        setTasks([]);
-      } finally {
-        setLoading(false);
+      } else {
+        setError('Unable to load tasks.');
       }
-    };
-
-    fetchTasks();
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
+  // Refetch when screen comes into focus (e.g., after creating a task)
+  useFocusEffect(
+    useCallback(() => {
+      fetchTasks();
+    }, [fetchTasks])
+  );
 
   // --- Tag helpers ---
   const buildTaskTagsFromTask = (task: TaskItem): TaskTags => {
@@ -739,6 +731,7 @@ export default function TasksScreen() {
         visible={statusPickerVisible !== null}
         transparent
         animationType="fade"
+        accessibilityViewIsModal
         onRequestClose={() => {
           setStatusPickerVisible(null);
           setStatusPickerTaskId(null);
@@ -750,8 +743,16 @@ export default function TasksScreen() {
             setStatusPickerVisible(null);
             setStatusPickerTaskId(null);
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Close modal"
         >
-          <Pressable onPress={(e) => e.stopPropagation()} style={styles.modalContent}>
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={styles.modalContent}
+            accessibilityViewIsModal
+            accessibilityRole="dialog"
+            accessibilityLabel="Select task status"
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Status</Text>
               <TouchableOpacity
