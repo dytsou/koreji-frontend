@@ -138,6 +138,10 @@ const EditableField = ({
   return (
     <TouchableOpacity
       onPress={handleStartEdit}
+      onPressIn={(e) => {
+        // Prevent event from bubbling to parent Pressable
+        e.stopPropagation?.();
+      }}
       style={containerStyle}
       activeOpacity={isReadOnly ? 1 : 0.6}
     >
@@ -560,8 +564,15 @@ export default function TasksScreen() {
       : 0;
     const shouldShowProgress = hasProgressFromSubtasks;
 
+    const handleTaskPress = () => {
+      router.push(`/add_task?taskId=${item.id}`);
+    };
+
     return (
-      <View style={styles.card}>
+      <Pressable
+        onPress={handleTaskPress}
+        style={styles.card}
+      >
         <View style={[styles.taskHeader, { padding: layout.cardHeaderPadding }]}>
 
           {/* Top part: category and title */}
@@ -675,7 +686,6 @@ export default function TasksScreen() {
                       />
                     </View>
 
-                    {/* Subtask title (editable) */}
                     {/* Subtask description (editable) */}
                     <EditableField
                       value={sub.description}
@@ -709,7 +719,7 @@ export default function TasksScreen() {
             })}
           </View>
         )}
-      </View>
+      </Pressable>
     );
   };
 

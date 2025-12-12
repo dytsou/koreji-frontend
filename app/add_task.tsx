@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, Alert, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { type TaskTags } from '@/components/ui/tag-display-row';
 import { TASK_SCREEN_STRINGS } from '@/constants/strings/tasks';
 import { TAG_GROUPS, DEFAULT_TAG_GROUP_ORDER, TAG_GROUP_COLORS, DEFAULT_CATEGORIES } from '@/constants/task-tags';
@@ -8,8 +8,8 @@ import { DEFAULT_TASK_STATUS } from '@/constants/task-status';
 import { type LocalSubTask } from '@/types/add-task';
 import { type TaskStatus } from '@/types/task-status';
 import { formatDate } from '@/utils/formatting/date';
-import { mapStatusToBackend } from '@/utils/mapping/status';
-import { post, ApiClientError } from '@/services/api/client';
+import { mapStatusToBackend, mapStatusFromBackend, type BackendTaskStatus } from '@/utils/mapping/status';
+import { post, patch, get, ApiClientError } from '@/services/api/client';
 import { MainTaskCard } from '@/components/add-task/main-task-card';
 import { SubtaskCard } from '@/components/add-task/subtask-card';
 import { SubtaskHeader } from '@/components/add-task/subtask-header';
@@ -18,8 +18,22 @@ import { DatePickerModal } from '@/components/add-task/date-picker-modal';
 import { TagSelectionModal } from '@/components/add-task/tag-selection-modal';
 
 
+interface ApiTaskResponse {
+  id: string;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  status: BackendTaskStatus;
+  estimated_minutes?: number | null;
+  due_date?: string | null;
+  subtasks?: ApiTaskResponse[];
+}
+
 export default function AddTaskScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ taskId?: string }>();
+  const isEditMode = !!params.taskId;
+  const [isLoading, setIsLoading] = useState(isEditMode);
 
   // Main Task State
   const [mainTitle, setMainTitle] = useState('');
@@ -36,6 +50,55 @@ export default function AddTaskScreen() {
 
   // Subtask List
   const [subtasks, setSubtasks] = useState<LocalSubTask[]>([]);
+
+  // Load task data for edit mode
+  useEffect(() => {
+    if (isEditMode && params.taskId) {
+      const loadTask = async () => {
+        try {
+          const task = await get<ApiTaskResponse>(`/tasks/${params.taskId}`);
+          
+          setMainTitle(task.title || '');
+          setMainDesc(task.description || '');
+          setMainTime(task.estimated_minutes?.toString() || '');
+          setMainStatus(mapStatusFromBackend(task.status));
+          
+          if (task.due_date) {
+            setMainDeadline(new Date(task.due_date));
+          }
+          
+          if (task.category) {
+            setMainTags({
+              tagGroups: {
+                Category: [task.category],
+              },
+            });
+          }
+
+          // Load subtasks
+          if (task.subtasks && task.subtasks.length > 0) {
+            const loadedSubtasks: LocalSubTask[] = task.subtasks.map((sub) => ({
+              id: sub.id,
+              title: sub.title || '',
+              description: sub.description || '',
+              estimatedTime: sub.estimated_minutes?.toString() || '',
+              deadline: sub.due_date ? new Date(sub.due_date) : null,
+              status: mapStatusFromBackend(sub.status),
+              tags: { tagGroups: {} },
+            }));
+            setSubtasks(loadedSubtasks);
+          }
+        } catch (error) {
+          console.error('[Load Task] Failed:', error);
+          Alert.alert('Error', 'Failed to load task data');
+          router.back();
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadTask();
+    }
+  }, [isEditMode, params.taskId, router]);
 
   // Tag Modal State
   const [editingTarget, setEditingTarget] = useState<'main' | string | null>(null);
@@ -355,7 +418,7 @@ export default function AddTaskScreen() {
       // Extract category from tags (Category tag group, first selected tag)
       const categoryFromTags = mainTags.tagGroups?.Category?.[0] || null;
 
-      // Create main task payload
+      // Main task payload
       const mainTaskPayload = {
         title: mainTitle.trim(),
         description: mainDesc.trim() || null,
@@ -366,32 +429,66 @@ export default function AddTaskScreen() {
         priority: null, // TODO: map from tags if needed
       };
 
-      // Create main task
-      const mainTaskResponse = await post<{ id: string; [key: string]: unknown }>('/tasks/', mainTaskPayload);
-      const mainTaskId = mainTaskResponse.id;
+      if (isEditMode && params.taskId) {
+        // Update existing task
+        await patch(`/tasks/${params.taskId}`, mainTaskPayload);
 
-      // Create subtasks if any
-      if (subtasks.length > 0) {
-        const subtaskPromises = subtasks.map(async (sub) => {
-          const subtaskPayload = {
-            task_id: mainTaskId,
-            title: sub.title.trim() || TASK_SCREEN_STRINGS.addTask.defaultUntitledSubtask,
-            description: sub.description.trim() || null,
-            due_date: sub.deadline ? formatDate(sub.deadline) : null,
-            status: mapStatusToBackend(sub.status),
-            estimated_minutes: parseInt(sub.estimatedTime) || null,
-            priority: null, // TODO: map from tags if needed
-          };
-          return post('/tasks/subtasks', subtaskPayload);
-        });
+        // Update subtasks
+        if (subtasks.length > 0) {
+          const subtaskPromises = subtasks.map(async (sub) => {
+            const subtaskPayload = {
+              title: sub.title.trim() || TASK_SCREEN_STRINGS.addTask.defaultUntitledSubtask,
+              description: sub.description.trim() || null,
+              due_date: sub.deadline ? formatDate(sub.deadline) : null,
+              status: mapStatusToBackend(sub.status),
+              estimated_minutes: parseInt(sub.estimatedTime) || null,
+              priority: null,
+            };
 
-        await Promise.all(subtaskPromises);
+            // Check if subtask exists (has UUID format) or is new
+            const isExistingSubtask = sub.id.length > 10 && sub.id.includes('-');
+            if (isExistingSubtask) {
+              // Update existing subtask
+              return patch(`/tasks/subtasks/${sub.id}`, subtaskPayload);
+            } else {
+              // Create new subtask
+              return post('/tasks/subtasks', {
+                ...subtaskPayload,
+                task_id: params.taskId,
+              });
+            }
+          });
+
+          await Promise.all(subtaskPromises);
+        }
+      } else {
+        // Create new task
+        const mainTaskResponse = await post<{ id: string; [key: string]: unknown }>('/tasks/', mainTaskPayload);
+        const mainTaskId = mainTaskResponse.id;
+
+        // Create subtasks if any
+        if (subtasks.length > 0) {
+          const subtaskPromises = subtasks.map(async (sub) => {
+            const subtaskPayload = {
+              task_id: mainTaskId,
+              title: sub.title.trim() || TASK_SCREEN_STRINGS.addTask.defaultUntitledSubtask,
+              description: sub.description.trim() || null,
+              due_date: sub.deadline ? formatDate(sub.deadline) : null,
+              status: mapStatusToBackend(sub.status),
+              estimated_minutes: parseInt(sub.estimatedTime) || null,
+              priority: null,
+            };
+            return post('/tasks/subtasks', subtaskPayload);
+          });
+
+          await Promise.all(subtaskPromises);
+        }
       }
 
       // Success - navigate back
       router.back();
     } catch (error) {
-      console.error('[Create Task] API error:', error);
+      console.error(`[${isEditMode ? 'Update' : 'Create'} Task] API error:`, error);
       let errorMessage = TASK_SCREEN_STRINGS.addTask.alerts.errorMessage;
       if (error instanceof ApiClientError) {
         errorMessage = error.message || errorMessage;
@@ -478,8 +575,16 @@ export default function AddTaskScreen() {
       {/* Footer */}
       <AddTaskFooter
         onSubmit={handleSubmit}
-        submitButtonText={isSubmitting ? 'Creating...' : TASK_SCREEN_STRINGS.addTask.createTaskButton}
-        disabled={isSubmitting}
+        submitButtonText={
+          isSubmitting
+            ? isEditMode
+              ? 'Updating...'
+              : 'Creating...'
+            : isEditMode
+            ? 'Update Task'
+            : TASK_SCREEN_STRINGS.addTask.createTaskButton
+        }
+        disabled={isSubmitting || isLoading}
       />
 
       {/* Main Task Date Picker */}
