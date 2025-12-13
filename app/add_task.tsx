@@ -10,11 +10,11 @@ import { SubtaskHeader } from '@/components/add-task/subtask-header';
 import { AddTaskFooter } from '@/components/add-task/add-task-footer';
 import { DatePickerModal } from '@/components/add-task/date-picker-modal';
 import { TagSelectionModal } from '@/components/add-task/tag-selection-modal';
-import { useAddTaskForm } from '@/hooks/use-add-task-form';
-import { useSubtasks } from '@/hooks/use-subtasks';
-import { useAddTaskTags } from '@/hooks/use-add-task-tags';
-import { useAddTaskData } from '@/hooks/use-add-task-data';
-import { useAddTaskSubmit } from '@/hooks/use-add-task-submit';
+import { useAddTaskForm } from '@/hooks/add-task/use-add-task-form';
+import { useSubtasks } from '@/hooks/add-task/use-subtasks';
+import { useAddTaskTags } from '@/hooks/add-task/use-add-task-tags';
+import { useAddTaskData } from '@/hooks/add-task/use-add-task-data';
+import { useAddTaskSubmit } from '@/hooks/add-task/use-add-task-submit';
 import { calculateTotalTime, isTimeReadOnly } from '@/utils/add-task/time-calculation';
 import { addTaskStyles } from '@/styles/add-task.styles';
 
@@ -168,10 +168,8 @@ export default function AddTaskScreen() {
     setShowDatePicker(false);
   };
 
-  // Subtask date change handler wrapper
-  const handleSubtaskDateChange = (subtaskId: string, event: any, selectedDate?: Date) => {
-    handleSubtaskDateChangeBase(subtaskId, event, selectedDate, updateSubtask);
-  };
+  // Subtask date change handler (uses updateSubtask from hook)
+  const handleSubtaskDateChange = handleSubtaskDateChangeBase;
 
   // Debug log when deadline state changes (for development)
   useEffect(() => {

@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useColorScheme } from '@/hooks/ui/use-color-scheme';
 import { TASK_SCREEN_STRINGS } from '@/constants/strings/tasks';
 
 export const unstable_settings = {

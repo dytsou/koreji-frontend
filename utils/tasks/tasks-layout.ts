@@ -1,4 +1,4 @@
-import { useResponsive } from '@/hooks/use-responsive';
+import { useResponsive } from '@/hooks/ui/use-responsive';
 
 export interface LayoutSizes {
   cardHeaderPadding: number;

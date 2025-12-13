@@ -40,15 +40,15 @@ export function useSubtasks() {
     setSubtaskDatePickers((prev) => ({ ...prev, [subtaskId]: false }));
   };
 
-  const handleSubtaskDateChange = (subtaskId: string, event: any, selectedDate?: Date, updateFn: (id: string, field: keyof LocalSubTask, value: Date) => void) => {
+  const handleSubtaskDateChange = (subtaskId: string, event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
       if (event.type === 'set' && selectedDate) {
-        updateFn(subtaskId, 'deadline', selectedDate);
+        updateSubtask(subtaskId, 'deadline', selectedDate);
       }
       closeSubtaskDatePicker(subtaskId);
     } else {
       if (selectedDate) {
-        updateFn(subtaskId, 'deadline', selectedDate);
+        updateSubtask(subtaskId, 'deadline', selectedDate);
       }
     }
   };

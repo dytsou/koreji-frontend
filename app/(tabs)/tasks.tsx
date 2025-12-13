@@ -3,12 +3,12 @@ import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useResponsive } from '@/hooks/use-responsive';
+import { useResponsive } from '@/hooks/ui/use-responsive';
 import {
   useContainerHandlers,
   useEditableFieldHandlers,
   useClearHoverHandlers,
-} from '@/hooks/use-task-hover-handlers';
+} from '@/hooks/tasks/use-task-hover-handlers';
 import { TASK_SCREEN_STRINGS } from '@/constants/strings/tasks';
 import { TagSelectionModal } from '@/components/add-task/tag-selection-modal';
 import { DatePickerModal } from '@/components/add-task/date-picker-modal';
@@ -16,10 +16,10 @@ import { type TaskItemWithSubtasks } from '@/types/tasks';
 import { TaskItemComponent } from '@/components/tasks/task-item';
 import { StatusPickerModal } from '@/components/tasks/status-picker-modal';
 import { TasksEmptyState } from '@/components/tasks/tasks-empty-state';
-import { useTasks } from '@/hooks/use-tasks';
-import { useTaskUpdate } from '@/hooks/use-task-update';
-import { useTaskTags } from '@/hooks/use-task-tags';
-import { useTaskUIState } from '@/hooks/use-task-ui-state';
+import { useTasks } from '@/hooks/tasks/use-tasks';
+import { useTaskUpdate } from '@/hooks/tasks/use-task-update';
+import { useTaskTags } from '@/hooks/tasks/use-task-tags';
+import { useTaskUIState } from '@/hooks/tasks/use-task-ui-state';
 import { isStatusComplete } from '@/utils/tasks/task-status';
 import { getLayoutSizes } from '@/utils/tasks/tasks-layout';
 import { tasksStyles } from '@/styles/tasks.styles';
