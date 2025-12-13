@@ -28,7 +28,7 @@ export function useAddTaskData(
     if (isEditMode && taskId) {
       const loadTask = async () => {
         try {
-          const task = await get<ApiTaskResponse>(`/tasks/${taskId}`);
+          const task = await get<ApiTaskResponse>(`/api/tasks/${taskId}`);
 
           setMainTitle(task.title || '');
           setMainDesc(task.description || '');

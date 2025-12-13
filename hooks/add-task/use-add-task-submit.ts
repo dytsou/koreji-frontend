@@ -46,7 +46,7 @@ export function useAddTaskSubmit(
 
       if (isEditMode && taskId) {
         // Update existing task
-        await patch(`/tasks/${taskId}`, mainTaskPayload);
+        await patch(`/api/tasks/${taskId}`, mainTaskPayload);
 
         // Update subtasks
         if (subtasks.length > 0) {
@@ -56,10 +56,10 @@ export function useAddTaskSubmit(
             // Check if subtask exists (has UUID format) or is new
             if (isExistingSubtask(sub.id)) {
               // Update existing subtask
-              return patch(`/tasks/subtasks/${sub.id}`, subtaskPayload);
+              return patch(`/api/tasks/subtasks/${sub.id}`, subtaskPayload);
             } else {
               // Create new subtask
-              return post('/tasks/subtasks', {
+              return post('/api/tasks/subtasks', {
                 ...subtaskPayload,
                 task_id: taskId,
               });
@@ -70,14 +70,14 @@ export function useAddTaskSubmit(
         }
       } else {
         // Create new task
-        const mainTaskResponse = await post<{ id: string; [key: string]: unknown }>('/tasks/', mainTaskPayload);
+        const mainTaskResponse = await post<{ id: string; [key: string]: unknown }>('/api/tasks/', mainTaskPayload);
         const mainTaskId = mainTaskResponse.id;
 
         // Create subtasks if any
         if (subtasks.length > 0) {
           const subtaskPromises = subtasks.map(async (sub) => {
             const subtaskPayload = buildSubtaskPayload(sub, mainTaskId);
-            return post('/tasks/subtasks', subtaskPayload);
+            return post('/api/tasks/subtasks', subtaskPayload);
           });
 
           await Promise.all(subtaskPromises);
