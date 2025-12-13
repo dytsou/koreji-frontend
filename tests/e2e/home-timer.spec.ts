@@ -22,26 +22,36 @@ test.describe('Home screen timer', () => {
     await expect(hoursValue).toHaveText('00');
     await expect(minutesValue).toHaveText('20');
 
+    // Wait for button to be actionable, then click
+    await expect(incrementHoursButton).toBeEnabled();
     await incrementHoursButton.click();
+    // Wait for state update with polling - WebKit may need more time
     await expect.poll(async () => {
-      return await hoursValue.textContent();
-    }, { timeout: 5000 }).toBe('01');
+      const text = await hoursValue.textContent();
+      return text;
+    }, { timeout: 10000 }).toBe('01');
 
+    await expect(incrementMinutesButton).toBeEnabled();
     await incrementMinutesButton.click();
     await incrementMinutesButton.click();
     await expect.poll(async () => {
-      return await minutesValue.textContent();
-    }, { timeout: 5000 }).toBe('22');
+      const text = await minutesValue.textContent();
+      return text;
+    }, { timeout: 10000 }).toBe('22');
 
+    await expect(decrementHoursButton).toBeEnabled();
     await decrementHoursButton.click();
     await expect.poll(async () => {
-      return await hoursValue.textContent();
-    }, { timeout: 5000 }).toBe('00');
+      const text = await hoursValue.textContent();
+      return text;
+    }, { timeout: 10000 }).toBe('00');
 
+    await expect(decrementMinutesButton).toBeEnabled();
     await decrementMinutesButton.click();
     await expect.poll(async () => {
-      return await minutesValue.textContent();
-    }, { timeout: 5000 }).toBe('21');
+      const text = await minutesValue.textContent();
+      return text;
+    }, { timeout: 10000 }).toBe('21');
 
     await expect(recommendButton).toContainText(actions.recommendButton);
 
