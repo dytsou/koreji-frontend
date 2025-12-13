@@ -68,17 +68,16 @@ test.describe('Home screen timer', () => {
     await expect(placeDropdown).toBeVisible();
     await placeDropdown.click();
     
-    // Wait for modal to appear - try multiple strategies for reliability across browsers
-    // Wait for the "Other" option text first as it confirms modal is open, then verify title
-    const otherOption = page.getByText('Other');
-    await expect(otherOption).toBeVisible({ timeout: 10000 });
-    
-    // Now verify the modal title exists and has correct text
+    // Wait for modal to appear - first wait for modal title to confirm modal is open
     const modalTitle = page.getByTestId('filter-modal-title');
-    await expect(modalTitle).toBeVisible();
+    await expect(modalTitle).toBeVisible({ timeout: 10000 });
     await expect(modalTitle).toHaveText('Select Place');
     
-    // Select "Other" option (already located above)
+    // Now wait for the "Other" option to be visible within the modal
+    const otherOption = page.getByText('Other');
+    await expect(otherOption).toBeVisible({ timeout: 5000 });
+    
+    // Select "Other" option
     await otherOption.click();
     
     // Verify input field appears
