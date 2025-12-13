@@ -108,7 +108,7 @@ export default function TasksScreen() {
   const isEmptyState = !loading && !error && structuredTasks.length === 0;
 
   const handleAddTask = () => {
-    router.push('/add_task');
+    router.push('/add-task');
   };
 
   // Date change handler wrapper
