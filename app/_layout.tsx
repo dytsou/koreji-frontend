@@ -20,7 +20,7 @@ export default function RootLayout() {
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
 
         <Stack.Screen
-          name="add_task"
+          name="add-task"
           options={{
             presentation: 'modal',
             title: TASK_SCREEN_STRINGS.addTask.sectionTitle,

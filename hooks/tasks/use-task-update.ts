@@ -52,7 +52,7 @@ export function useTaskUpdate(
 
     try {
       // Determine endpoint based on whether it's a subtask
-      const endpoint = isSubtask ? `/tasks/subtasks/${id}` : `/tasks/${id}`;
+      const endpoint = isSubtask ? `/api/tasks/subtasks/${id}` : `/api/tasks/${id}`;
 
       await patch(endpoint, payload);
 

@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { get } from '@/services/api/client';
-import { type ApiTaskResponse } from '@/types/add-task';
-import { type LocalSubTask } from '@/types/add-task';
+import { type ApiTaskResponse, type LocalSubTask } from '@/types/add-task';
 import { type TaskTags } from '@/components/ui/tag-display-row';
 import { mapStatusFromBackend } from '@/utils/mapping/status';
 
@@ -28,7 +27,7 @@ export function useAddTaskData(
     if (isEditMode && taskId) {
       const loadTask = async () => {
         try {
-          const task = await get<ApiTaskResponse>(`/tasks/${taskId}`);
+          const task = await get<ApiTaskResponse>(`/api/tasks/${taskId}`);
 
           setMainTitle(task.title || '');
           setMainDesc(task.description || '');

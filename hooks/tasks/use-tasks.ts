@@ -17,7 +17,7 @@ export function useTasks() {
     setError(null);
     try {
       // Only fetch top-level tasks (is_subtask=false)
-      const data = await get<ApiTaskResponse[]>('/tasks?is_subtask=false');
+      const data = await get<ApiTaskResponse[]>('/api/tasks?is_subtask=false');
       const flattened = Array.isArray(data) ? flattenTasks(data) : [];
       setTasks(flattened);
     } catch (err) {
