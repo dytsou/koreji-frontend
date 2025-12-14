@@ -3,8 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { get, ApiClientError } from '@/services/api/client';
-import { type ApiTaskResponse } from '@/types/tasks';
+import { useTask } from '@/hooks/tasks/use-task';
 import { useTaskTimer } from '@/hooks/task-progress/use-task-timer';
 import { TASK_PROGRESS_STRINGS } from '@/constants/strings/task-progress';
 
@@ -14,35 +13,23 @@ export default function TaskProgressScreen() {
   const { taskId } = params;
   
   const timer = useTaskTimer();
-  const [task, setTask] = useState<ApiTaskResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { task, loading, error, fetchTask } = useTask();
   const [progressPercent] = useState(9); // Placeholder, should fetch from backend
 
   // Fetch task data
   useEffect(() => {
-    const fetchTask = async () => {
-      if (!taskId) {
-        setLoading(false);
-        return;
-      }
+    if (taskId) {
+      fetchTask(taskId);
+    }
+  }, [taskId, fetchTask]);
 
-      try {
-        setLoading(true);
-        const taskData = await get<ApiTaskResponse>(`/api/tasks/${taskId}`);
-        setTask(taskData);
-      } catch (error) {
-        console.error('[Task Progress] Failed to load task:', error);
-        if (error instanceof ApiClientError) {
-          // Handle API error - could show error message or redirect back
-          router.back();
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTask();
-  }, [taskId, router]);
+  // Handle error by redirecting back
+  useEffect(() => {
+    if (error) {
+      console.error('[Task Progress] Failed to load task:', error);
+      router.back();
+    }
+  }, [error, router]);
 
   // Start timer automatically when page loads (user already clicked "Start Task")
   useEffect(() => {

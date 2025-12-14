@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { get, ApiClientError } from '@/services/api/client';
-import { type ApiTaskResponse } from '@/types/tasks';
+import { useTask } from '@/hooks/tasks/use-task';
 import { TASK_COMPLETION_STRINGS } from '@/constants/strings/task-completion';
 
 export default function TaskCompletionScreen() {
@@ -15,35 +14,23 @@ export default function TaskCompletionScreen() {
   }>();
 
   const { taskId, progressPercent } = params;
-  const [task, setTask] = useState<ApiTaskResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { task, loading, error, fetchTask } = useTask();
   const progress = progressPercent ? parseInt(progressPercent, 10) : 9;
 
   // Fetch task data
   useEffect(() => {
-    const fetchTask = async () => {
-      if (!taskId) {
-        setLoading(false);
-        return;
-      }
+    if (taskId) {
+      fetchTask(taskId);
+    }
+  }, [taskId, fetchTask]);
 
-      try {
-        setLoading(true);
-        const taskData = await get<ApiTaskResponse>(`/api/tasks/${taskId}`);
-        setTask(taskData);
-      } catch (error) {
-        console.error('[Task Completion] Failed to load task:', error);
-        if (error instanceof ApiClientError) {
-          // Handle API error - could show error message or redirect back
-          router.back();
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTask();
-  }, [taskId, router]);
+  // Handle error by redirecting back
+  useEffect(() => {
+    if (error) {
+      console.error('[Task Completion] Failed to load task:', error);
+      router.back();
+    }
+  }, [error, router]);
 
   const taskTitle = task?.title || '';
 
