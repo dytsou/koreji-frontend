@@ -84,11 +84,14 @@ export default function HomeScreen() {
         placeValue = trimmedPlace;
       }
     }
-    
+
     const totalMinutes = hours * 60 + minutes;
     const safeMode = selectedMode !== NO_SELECT ? selectedMode : '';
     const safePlace = placeValue !== NO_SELECT ? placeValue : '';
     const safeTools = selectedTool.filter((t) => t !== NO_SELECT);
+
+    // Log action for E2E verification and analytics-style tracing
+    console.log(actions.recommendLog);
 
     router.push({
       pathname: '/task-recommend',
