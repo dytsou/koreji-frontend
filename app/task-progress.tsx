@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTaskTimer } from '@/hooks/task-progress/use-task-timer';
 import { TASK_PROGRESS_STRINGS } from '@/constants/strings/task-progress';
+import { DOG_IMAGES } from '@/constants/images';
 import { post } from '@/services/api/client';
 
 export default function TaskProgressScreen() {
@@ -24,6 +25,11 @@ export default function TaskProgressScreen() {
 
   const timer = useTaskTimer();
   const [progressPercent] = useState(9); // Placeholder, should fetch from backend
+
+  const selectedImage = useMemo(() => {
+    const randomIndex = Math.floor(Math.random() * DOG_IMAGES.length);
+    return DOG_IMAGES[randomIndex];
+  }, []);
 
   // Start timer automatically when page loads (user already clicked "Start Task")
   useEffect(() => {
@@ -101,40 +107,79 @@ export default function TaskProgressScreen() {
       </View>
 
       {/* Content */}
-      <View style={styles.content}>
-        {/* Task Title */}
-        <Text style={styles.taskTitle}>{taskTitle || ' '}</Text>
+      {timer.isPaused ? (
+        <View style={styles.pauseContent}>
+          {/* Task Title with Paused label */}
+          <Text style={styles.taskTitle}>
+            {taskTitle || ' '}
+            <Text style={styles.taskTitlePaused}> : Paused</Text>
+          </Text>
 
-        {/* Scheduled Duration */}
-        <Text style={styles.scheduledText}>
-          {TASK_PROGRESS_STRINGS.scheduledFor} {durationMinutes} {TASK_PROGRESS_STRINGS.minutes}
-        </Text>
+          {/* Subtitle */}
+          <Text style={styles.pauseSubtitle}>Rest is a part of the work.</Text>
 
-        {/* Activity Indicator */}
-        <View style={styles.indicatorContainer}>
-          {timer.isRunning && (
-            <ActivityIndicator size="large" color="#333333" style={styles.activityIndicator} />
-          )}
+          {/* Pause Illustration */}
+          <View style={styles.pauseImageWrapper}>
+            <Image
+              source={selectedImage}
+              style={styles.pauseImage}
+              resizeMode="cover"
+            />
+          </View>
+
+          {/* Action Buttons for Paused State */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.button, styles.pauseButton]}
+              onPress={handleComplete}
+            >
+              <Text style={styles.pauseButtonText}>End Task</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.completeButton]}
+              onPress={handlePause}
+            >
+              <Text style={styles.completeButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+      ) : (
+        <View style={styles.content}>
+          {/* Task Title */}
+          <Text style={styles.taskTitle}>{taskTitle || ' '}</Text>
 
-        {/* Action Buttons */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.button, styles.pauseButton]}
-            onPress={handlePause}
-            disabled={!timer.isRunning && !timer.isPaused}
-          >
-            <Text style={styles.pauseButtonText}>{TASK_PROGRESS_STRINGS.pause}</Text>
-          </TouchableOpacity>
+          {/* Scheduled Duration */}
+          <Text style={styles.scheduledText}>
+            {TASK_PROGRESS_STRINGS.scheduledFor} {durationMinutes} {TASK_PROGRESS_STRINGS.minutes}
+          </Text>
 
-          <TouchableOpacity
-            style={[styles.button, styles.completeButton]}
-            onPress={handleComplete}
-          >
-            <Text style={styles.completeButtonText}>{TASK_PROGRESS_STRINGS.complete}</Text>
-          </TouchableOpacity>
+          {/* Activity Indicator */}
+          <View style={styles.indicatorContainer}>
+            {timer.isRunning && (
+              <ActivityIndicator size="large" color="#333333" style={styles.activityIndicator} />
+            )}
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.button, styles.pauseButton]}
+              onPress={handlePause}
+              disabled={!timer.isRunning && !timer.isPaused}
+            >
+              <Text style={styles.pauseButtonText}>{TASK_PROGRESS_STRINGS.pause}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.completeButton]}
+              onPress={handleComplete}
+            >
+              <Text style={styles.completeButtonText}>{TASK_PROGRESS_STRINGS.complete}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -160,6 +205,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 40,
   },
+  pauseContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
   taskTitle: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -168,11 +220,33 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     lineHeight: 32,
   },
+  taskTitlePaused: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
   scheduledText: {
     fontSize: 16,
     color: '#666666',
     textAlign: 'center',
     marginBottom: 48,
+  },
+  pauseSubtitle: {
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  pauseImageWrapper: {
+    width: 200,
+    height: 200,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 40,
+  },
+  pauseImage: {
+    width: '100%',
+    height: '100%',
   },
   indicatorContainer: {
     height: 100,

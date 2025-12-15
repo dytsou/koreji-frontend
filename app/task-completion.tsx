@@ -8,21 +8,9 @@ import { CompletionPage1 } from '@/components/task-completion/completion-page-1'
 import { CompletionPage2 } from '@/components/task-completion/completion-page-2';
 import { PaginationDots } from '@/components/task-completion/pagination-dots';
 import { TASK_COMPLETION_STRINGS } from '@/constants/strings/task-completion';
+import { DOG_IMAGES } from '@/constants/images';
 
 const TOTAL_PAGES = 2;
-
-// Array of all dog images
-const DOG_IMAGES = [
-  require('@/assets/dogs/dog1.jpg'),
-  require('@/assets/dogs/dog2.jpg'),
-  require('@/assets/dogs/dog3.jpg'),
-  require('@/assets/dogs/dog4.jpg'),
-  require('@/assets/dogs/dog5.jpg'),
-  require('@/assets/dogs/dog6.jpg'),
-  require('@/assets/dogs/dog7.jpg'),
-  require('@/assets/dogs/dog8.jpg'),
-  require('@/assets/dogs/dog9.jpg'),
-];
 
 export default function TaskCompletionScreen() {
   const params = useLocalSearchParams<{
