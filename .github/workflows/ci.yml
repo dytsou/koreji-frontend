@@ -105,9 +105,24 @@ jobs:
       - name: Run type checks
         run: pnpm typecheck
 
-      - name: Install Playwright browsers
+      - name: Cache Playwright browsers
         if: ${{ steps.e2e-changes.outputs.e2e == 'true' }}
-        run: pnpm exec playwright install --with-deps
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-ms-playwright-${{ hashFiles('pnpm-lock.yaml', 'package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-ms-playwright-
+
+      - name: Install Playwright system dependencies
+        if: ${{ steps.e2e-changes.outputs.e2e == 'true' }}
+        run: pnpm exec playwright install-deps
+
+      - name: Install Playwright browsers (cache miss)
+        if: ${{ steps.e2e-changes.outputs.e2e == 'true' && steps.playwright-cache.outputs.cache-hit != 'true' }}
+        run: pnpm exec playwright install
 
       - name: Start Expo web server
         if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && steps.e2e-changes.outputs.e2e == 'true' }}
