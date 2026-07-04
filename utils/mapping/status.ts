@@ -4,10 +4,7 @@ import { type TaskStatus } from '@/types/task-status';
  * Backend task status type
  */
 export type BackendTaskStatus =
-  | 'pending'
-  | 'in_progress'
-  | 'completed'
-  | 'archived';
+  'pending' | 'in_progress' | 'completed' | 'archived';
 
 /**
  * Maps frontend task status to backend API status format

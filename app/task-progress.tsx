@@ -62,8 +62,7 @@ export default function TaskProgressScreen() {
       const timeoutId = setTimeout(() => {
         try {
           const ref = containerRef.current as
-            | (View & { nativeElement?: { focus?: () => void } })
-            | null;
+            (View & { nativeElement?: { focus?: () => void } }) | null;
           const element = (ref?.nativeElement ?? ref) as {
             focus?: () => void;
           } | null;
