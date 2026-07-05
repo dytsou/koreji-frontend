@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { HOME_SCREEN_STRINGS } from '@/constants/strings/home';
+import { mockBackendApi } from './mock-api';
 
 test.describe('Home screen timer', () => {
   test.beforeEach(async ({ page }) => {
+    await mockBackendApi(page);
     const response = await page.goto('/');
     expect(response?.ok()).toBeTruthy();
   });
