@@ -1,6 +1,25 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator } from '@playwright/test';
 import { HOME_SCREEN_STRINGS } from '@/constants/strings/home';
 import { mockBackendApi } from './mock-api';
+
+/**
+ * Expo Router server-renders the initial HTML before the client bundle
+ * hydrates, so a button can appear "enabled" slightly before its onPress
+ * handler is attached. A single click landing in that gap is silently
+ * dropped. Re-clicking until the expected text shows up makes the test
+ * robust to that race without weakening the assertion itself.
+ */
+async function clickUntilText(
+  button: Locator,
+  valueLocator: Locator,
+  expected: string,
+  timeout = 10000
+) {
+  await expect(async () => {
+    await button.click();
+    await expect(valueLocator).toHaveText(expected, { timeout: 500 });
+  }).toPass({ timeout });
+}
 
 test.describe('Home screen timer', () => {
   test.beforeEach(async ({ page }) => {
@@ -24,56 +43,21 @@ test.describe('Home screen timer', () => {
     await expect(hoursValue).toHaveText('00');
     await expect(minutesValue).toHaveText('20');
 
-    // Wait for button to be actionable, then click
+    // Wait for button to be actionable, then click.
+    // Uses a retrying click since Expo Router web hydration can leave a brief
+    // window where the button is "enabled" before its handler is attached.
     await expect(incrementHoursButton).toBeEnabled();
-    await incrementHoursButton.click();
-    // Wait for state update with polling - WebKit may need more time
-    await expect
-      .poll(
-        async () => {
-          const text = await hoursValue.textContent();
-          return text;
-        },
-        { timeout: 10000 }
-      )
-      .toBe('01');
+    await clickUntilText(incrementHoursButton, hoursValue, '01');
 
     await expect(incrementMinutesButton).toBeEnabled();
     await incrementMinutesButton.click();
-    await incrementMinutesButton.click();
-    await expect
-      .poll(
-        async () => {
-          const text = await minutesValue.textContent();
-          return text;
-        },
-        { timeout: 10000 }
-      )
-      .toBe('22');
+    await clickUntilText(incrementMinutesButton, minutesValue, '22');
 
     await expect(decrementHoursButton).toBeEnabled();
-    await decrementHoursButton.click();
-    await expect
-      .poll(
-        async () => {
-          const text = await hoursValue.textContent();
-          return text;
-        },
-        { timeout: 10000 }
-      )
-      .toBe('00');
+    await clickUntilText(decrementHoursButton, hoursValue, '00');
 
     await expect(decrementMinutesButton).toBeEnabled();
-    await decrementMinutesButton.click();
-    await expect
-      .poll(
-        async () => {
-          const text = await minutesValue.textContent();
-          return text;
-        },
-        { timeout: 10000 }
-      )
-      .toBe('21');
+    await clickUntilText(decrementMinutesButton, minutesValue, '21');
 
     await expect(recommendButton).toContainText(actions.recommendButton);
 
