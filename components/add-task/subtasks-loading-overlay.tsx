@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { QuadrantRotate } from '@/components/ui/quadrant-rotate';
 
 interface SubtasksLoadingOverlayProps {
@@ -44,11 +44,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     borderRadius: 20,
     backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    ...Platform.select({
+      web: { boxShadow: '0px 4px 12px 0px rgba(0, 0, 0, 0.15)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 6,
+      },
+    }),
     alignItems: 'center',
     maxWidth: '90%',
   },

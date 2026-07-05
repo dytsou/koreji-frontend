@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTaskCompletion } from '@/hooks/task-completion/use-task-completion';
 import { CompletionPage1 } from '@/components/task-completion/completion-page-1';
 import { CompletionPage2 } from '@/components/task-completion/completion-page-2';
@@ -60,11 +60,10 @@ export default function TaskCompletionScreen() {
     }
   }, []);
 
-  // Randomly select one dog image (memoized to persist across page navigation)
-  const selectedImage = useMemo(() => {
-    const randomIndex = Math.floor(Math.random() * DOG_IMAGES.length);
-    return DOG_IMAGES[randomIndex];
-  }, []);
+  // Randomly select one dog image (stable for the lifetime of this screen)
+  const [selectedImage] = useState(
+    () => DOG_IMAGES[Math.floor(Math.random() * DOG_IMAGES.length)]
+  );
 
   const {
     task,
