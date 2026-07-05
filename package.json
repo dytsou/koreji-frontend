@@ -58,17 +58,6 @@
     "prettier": "^3.9.4",
     "typescript": "~6.0.3"
   },
-  "pnpm": {
-    "overrides": {
-      "react": "19.1.0",
-      "react-dom": "19.1.0",
-      "glob": "^13.0.0",
-      "rimraf": "^5.0.0"
-    },
-    "onlyBuiltDependencies": [
-      "unrs-resolver"
-    ]
-  },
   "private": true,
-  "packageManager": "pnpm@10.29.3+sha512.498e1fb4cca5aa06c1dcf2611e6fafc50972ffe7189998c409e90de74566444298ffe43e6cd2acdc775ba1aa7cc5e092a8b7054c811ba8c5770f84693d33d2dc"
+  "packageManager": "pnpm@11.10.0+sha512.0b7f8b98060031904c017e3a41eb187a16d40eeb829b95c4f8cb03681761fc4ab53dd219115b9b447f4dce1a05a214764461e7d3703392a9f32f9511ce8c86c8"
 }

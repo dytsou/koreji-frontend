@@ -1,1 +1,11 @@
 nodeLinker: hoisted
+
+overrides:
+  react: 19.1.0
+  react-dom: 19.1.0
+  glob: ^13.0.0
+  rimraf: ^5.0.0
+  shell-quote: ^1.8.4
+
+allowBuilds:
+  unrs-resolver: true
