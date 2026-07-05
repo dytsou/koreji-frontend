@@ -61,8 +61,10 @@ export default function TaskRecommendScreen() {
     null
   );
 
-  const totalMinutes =
-    typeof params.time === 'string' && params.time ? Number(params.time) : NaN;
+  const hasValidTime = typeof params.time === 'string' && !!params.time;
+  const totalMinutes = hasValidTime ? Number(params.time) : NaN;
+  const displayTasks = hasValidTime ? tasks : [];
+  const displaySelectedTaskId = hasValidTime ? selectedTaskId : null;
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -73,15 +75,16 @@ export default function TaskRecommendScreen() {
   }, []);
 
   useEffect(() => {
+    if (!hasValidTime) {
+      return;
+    }
+
     const fetchRecommendations = async () => {
       setLoading(true);
       setErrorMessage(null);
 
       try {
-        const time =
-          typeof params.time === 'string' && params.time
-            ? Number(params.time)
-            : NaN;
+        const time = Number(params.time);
 
         const payload = {
           time,
@@ -229,15 +232,9 @@ export default function TaskRecommendScreen() {
       }
     };
 
-    // Only call backend when we have a valid time value; otherwise leave tasks empty
-    if (typeof params.time === 'string' && params.time) {
-      fetchRecommendations();
-    } else {
-      setTasks([]);
-      setSelectedTaskId(null);
-    }
+    fetchRecommendations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.time, params.mode, params.place, params.tools]);
+  }, [hasValidTime, params.time, params.mode, params.place, params.tools]);
 
   // Calculate number of columns based on screen width (always use masonry, max 2 columns)
   const getColumns = () => {
@@ -253,9 +250,11 @@ export default function TaskRecommendScreen() {
   const cardWidth = (availableWidth - gapSize * (columns - 1)) / columns;
 
   const handleStartTask = async () => {
-    if (!selectedTaskId) return;
+    if (!displaySelectedTaskId) return;
 
-    const selectedTask = tasks.find((task) => task.id === selectedTaskId);
+    const selectedTask = displayTasks.find(
+      (task) => task.id === displaySelectedTaskId
+    );
     if (selectedTask) {
       console.log('Start task pressed - Selected task info:', {
         id: selectedTask.id,
@@ -323,10 +322,10 @@ export default function TaskRecommendScreen() {
             </View>
           )}
           <TaskList
-            tasks={tasks}
+            tasks={displayTasks}
             columns={columns}
             cardWidth={cardWidth}
-            selectedTaskId={selectedTaskId}
+            selectedTaskId={displaySelectedTaskId}
             onTaskSelect={handleTaskSelect}
             onTaskLongPress={handleTaskLongPress}
             onTaskInfoPress={handleTaskInfoPress}

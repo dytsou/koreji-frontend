@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -27,23 +27,19 @@ export function EditableField({
   onSave,
 }: EditableFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [tempValue, setTempValue] = useState(value);
-
-  // When external data changes, synchronize the internal temporary value
-  useEffect(() => {
-    setTempValue(value);
-  }, [value]);
+  const [editValue, setEditValue] = useState('');
 
   const handleStartEdit = () => {
     if (isReadOnly) return;
+    setEditValue(value);
     setIsEditing(true);
   };
 
   const handleSubmit = () => {
     setIsEditing(false);
     // Update only if the value has changed
-    if (tempValue !== value) {
-      onSave(tempValue);
+    if (editValue !== value) {
+      onSave(editValue);
     }
   };
 
@@ -51,8 +47,8 @@ export function EditableField({
     return (
       <View style={[containerStyle, styles.inputWrapper]}>
         <TextInput
-          value={tempValue}
-          onChangeText={setTempValue}
+          value={editValue}
+          onChangeText={setEditValue}
           onSubmitEditing={handleSubmit} // Trigger save when pressing Enter
           onBlur={handleSubmit} // Trigger save when losing focus
           autoFocus

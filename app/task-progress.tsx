@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -39,10 +39,9 @@ export default function TaskProgressScreen() {
   const timer = useTaskTimer();
   const [progressPercent] = useState(9); // Placeholder, should fetch from backend
 
-  const selectedImage = useMemo(() => {
-    const randomIndex = Math.floor(Math.random() * DOG_IMAGES.length);
-    return DOG_IMAGES[randomIndex];
-  }, []);
+  const [selectedImage] = useState(
+    () => DOG_IMAGES[Math.floor(Math.random() * DOG_IMAGES.length)]
+  );
 
   // Ref for focus management on web
   const containerRef = useRef<View>(null);
