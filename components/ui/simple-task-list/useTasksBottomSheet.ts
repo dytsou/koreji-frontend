@@ -7,7 +7,6 @@ export function useTasksBottomSheet(tasks: TaskItem[] = []) {
   const translateY = useSharedValue(0);
   const isExpandedShared = useSharedValue(false);
   const isExpandedSharedRef = useRef(isExpandedShared);
-  isExpandedSharedRef.current = isExpandedShared;
 
   const setExpanded = useCallback((expanded: boolean) => {
     setIsExpanded(expanded);
