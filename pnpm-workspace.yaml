@@ -9,6 +9,7 @@ overrides:
   shell-quote: ^1.8.4
   ws@^7.0.0: 7.5.11
   ws@^8.0.0: 8.21.0
+  uuid: ^11.1.1
 
 allowBuilds:
   unrs-resolver: true
