@@ -127,7 +127,7 @@ jobs:
       - name: Start Expo web server
         if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && steps.e2e-changes.outputs.e2e == 'true' }}
         run: |
-          pnpm exec expo start --web --non-interactive --port 8081 >/tmp/expo-web.log 2>&1 &
+          pnpm exec expo start --web --localhost --port 8081 >/tmp/expo-web.log 2>&1 &
           echo $! > expo_web.pid
 
       - name: Wait for Expo web server
