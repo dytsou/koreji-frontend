@@ -54,7 +54,7 @@
     "@unrs/resolver-binding-darwin-arm64": "1.12.2",
     "dotenv": "^17.4.2",
     "eslint": "^10.8.0",
-    "eslint-config-expo": "~57.0.0",
+    "eslint-config-expo": "~57.0.1",
     "prettier": "^3.9.6",
     "typescript": "~6.0.3"
   },
