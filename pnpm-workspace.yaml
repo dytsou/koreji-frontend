@@ -6,8 +6,8 @@ overrides:
   react-dom: 19.1.0
   glob: ^13.0.0
   rimraf: ^5.0.0
-  brace-expansion@1: 1.1.16
-  brace-expansion@5: 5.0.8
+  brace-expansion@1: 1.1.18
+  brace-expansion@5: 5.0.9
   postcss: ^8.5.18
   shell-quote: ^1.8.4
   ws@^7.0.0: 7.5.11
