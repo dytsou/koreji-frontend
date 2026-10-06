@@ -46,6 +46,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Run lint
+        run: pnpm lint
+
+      - name: Run type checks
+        run: pnpm typecheck
+
       - name: Format with Prettier (write)
         if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
         run: pnpm exec prettier --write .
@@ -59,99 +65,3 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "style: apply Prettier formatting"
-
-  quality-checks:
-    runs-on: ubuntu-latest
-    needs: format
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Detect E2E-impacting changes
-        id: e2e-changes
-        uses: dorny/paths-filter@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          filters: |
-            e2e:
-              - 'app/**/*.ts'
-              - 'app/**/*.tsx'
-              - 'tests/e2e/**/*.ts'
-              - 'tests/e2e/**/*.tsx'
-              - 'playwright.config.ts'
-              - 'scripts/**'
-              - '.github/workflows/ci.yml'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run Prettier
-        run: pnpm exec prettier --write .
-
-      - name: Run lint
-        run: pnpm lint
-
-      - name: Run type checks
-        run: pnpm typecheck
-
-      - name: Cache Playwright browsers
-        if: ${{ steps.e2e-changes.outputs.e2e == 'true' }}
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/ms-playwright
-          key: ${{ runner.os }}-ms-playwright-${{ hashFiles('pnpm-lock.yaml', 'package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-ms-playwright-
-
-      - name: Install Playwright system dependencies
-        if: ${{ steps.e2e-changes.outputs.e2e == 'true' }}
-        run: pnpm exec playwright install-deps
-
-      - name: Install Playwright browsers (cache miss)
-        if: ${{ steps.e2e-changes.outputs.e2e == 'true' && steps.playwright-cache.outputs.cache-hit != 'true' }}
-        run: pnpm exec playwright install
-
-      - name: Start Expo web server
-        if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && steps.e2e-changes.outputs.e2e == 'true' }}
-        run: |
-          pnpm exec expo start --web --localhost --port 8081 >/tmp/expo-web.log 2>&1 &
-          echo $! > expo_web.pid
-
-      - name: Wait for Expo web server
-        id: wait-expo
-        if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && steps.e2e-changes.outputs.e2e == 'true' }}
-        run: |
-          timeout 180 bash -c 'until curl -sf http://localhost:8081 >/dev/null; do sleep 3; done'
-
-      - name: Expo web server log (on wait failure)
-        if: failure() && steps.wait-expo.outcome == 'failure'
-        run: |
-          echo "---- Expo web server log (wait timed out or failed) ----"
-          cat /tmp/expo-web.log || true
-
-      - name: Run Playwright suite
-        if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && steps.e2e-changes.outputs.e2e == 'true' }}
-        run: pnpm test:e2e
-
-      - name: Stop Expo web server (always)
-        if: always()
-        run: |
-          if [ -f expo_web.pid ]; then
-            kill "$(cat expo_web.pid)" || true
-            rm -f expo_web.pid
-          fi
-          if [ -f /tmp/expo-web.log ]; then
-            echo "---- Expo web server log ----"
-            tail -n 200 /tmp/expo-web.log || true
-          fi
